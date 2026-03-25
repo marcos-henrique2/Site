@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
+import { apiClient } from '@/api/base44Client';
 import { format } from 'date-fns';
 import { Eye, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -31,11 +31,13 @@ export default function AdminOrders() {
 
   const { data: orders = [], isLoading } = useQuery({
     queryKey: ['admin-orders'],
-    queryFn: () => base44.entities.Order.list('-created_date', 500),
+    // Substituído base44.entities.Order.list pelo nosso apiClient
+    queryFn: () => apiClient.orders.getAll(),
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.Order.update(id, data),
+    // Adicionamos esta anotação para o editor saber que recebemos um objeto com id e data
+    mutationFn: (/** @type {{ id: string|number, data: any }} */ { id, data }) => apiClient.orders.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
       toast({ title: 'Pedido atualizado!' });
@@ -157,7 +159,8 @@ export default function AdminOrders() {
                   <Button
                     variant="outline"
                     onClick={() => {
-                      const code = document.getElementById('tracking').value;
+                      // O comentário abaixo ensina ao editor que o elemento é um Input
+                      const code = /** @type {HTMLInputElement} */ (document.getElementById('tracking')).value;
                       updateMutation.mutate({ id: selected.id, data: { tracking_code: code } });
                     }}
                   >

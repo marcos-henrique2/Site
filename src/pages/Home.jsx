@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
+import { apiClient } from '@/api/base44Client'; // Importação corrigida
 import { ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import HeroSection from '@/components/store/HeroSection';
@@ -12,12 +12,22 @@ import { Skeleton } from '@/components/ui/skeleton';
 export default function Home() {
   const { data: featured = [], isLoading: loadingProducts } = useQuery({
     queryKey: ['featured-products'],
-    queryFn: () => base44.entities.Product.filter({ is_active: true, is_featured: true }, '-created_date', 8),
+    queryFn: async () => {
+      // Busca todos os produtos e filtra apenas os ativos e em destaque (limite de 8)
+      const allProducts = await apiClient.products.getAll();
+      return allProducts
+        .filter(p => p.is_active && p.is_featured)
+        .slice(0, 8);
+    },
   });
 
   const { data: categories = [], isLoading: loadingCategories } = useQuery({
     queryKey: ['categories'],
-    queryFn: () => base44.entities.Category.filter({ is_active: true }, 'order', 50),
+    queryFn: async () => {
+      // Busca todas as categorias e filtra apenas as ativas
+      const allCategories = await apiClient.categories.getAll();
+      return allCategories.filter(c => c.is_active);
+    },
   });
 
   return (

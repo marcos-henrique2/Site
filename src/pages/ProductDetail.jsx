@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
+import { apiClient } from '@/api/base44Client';
 import { Link, useParams } from 'react-router-dom';
 import { ShoppingCart, Minus, Plus, ArrowLeft, Package, Ruler, Clock, Layers, Weight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -16,26 +16,33 @@ export default function ProductDetail() {
   const [selectedImage, setSelectedImage] = useState(0);
   const { addItem } = useCart();
 
+  // 1. Corrigida a busca do Produto individual
   const { data: product, isLoading } = useQuery({
     queryKey: ['product', id],
     queryFn: async () => {
-      const results = await base44.entities.Product.filter({ id }, null, 1);
-      return results[0];
+      // Como agora recebemos a lista toda no nosso mock, filtramos pelo ID localmente
+      const allProducts = await apiClient.products.getAll();
+      return allProducts.find(p => p.id === id);
     },
     enabled: !!id,
   });
 
+  // 2. Corrigida a busca dos Produtos Relacionados
   const { data: related = [] } = useQuery({
     queryKey: ['related', product?.category_id],
-    queryFn: () => base44.entities.Product.filter({ category_id: product.category_id, is_active: true }, '-created_date', 5),
+    queryFn: async () => {
+      const allProducts = await apiClient.products.getAll();
+      return allProducts.filter(p => p.category_id === product.category_id && p.is_active);
+    },
     enabled: !!product?.category_id,
   });
 
+  // 3. Corrigida a busca da Categoria
   const { data: category } = useQuery({
     queryKey: ['category', product?.category_id],
     queryFn: async () => {
-      const results = await base44.entities.Category.filter({ id: product.category_id }, null, 1);
-      return results[0];
+      const allCategories = await apiClient.categories.getAll();
+      return allCategories.find(c => c.id === product.category_id);
     },
     enabled: !!product?.category_id,
   });

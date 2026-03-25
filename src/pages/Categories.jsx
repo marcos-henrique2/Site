@@ -1,13 +1,17 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
+import { apiClient } from '@/api/base44Client';
 import CategoryCard from '@/components/store/CategoryCard';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function Categories() {
   const { data: categories = [], isLoading } = useQuery({
     queryKey: ['categories'],
-    queryFn: () => base44.entities.Category.filter({ is_active: true }, 'order', 50),
+    queryFn: async () => {
+      // Busca todas as categorias no nosso cliente e filtra para mostrar apenas as ativas
+      const allCategories = await apiClient.categories.getAll();
+      return allCategories.filter(c => c.is_active);
+    },
   });
 
   return (

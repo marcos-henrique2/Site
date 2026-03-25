@@ -8,7 +8,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useCart } from '@/contexts/CartContext';
-import { base44 } from '@/api/base44Client';
 import { useToast } from '@/components/ui/use-toast';
 
 const paymentMethods = [
@@ -34,29 +33,46 @@ export default function Checkout() {
     if (!form.name || !form.email || items.length === 0) return;
 
     setSubmitting(true);
-    await base44.entities.Order.create({
-      customer_name: form.name,
-      customer_email: form.email,
-      customer_phone: form.phone,
-      customer_address: form.address,
-      notes: form.notes,
-      items: items.map(i => ({
-        product_id: i.product_id,
-        product_name: i.product_name,
-        quantity: i.quantity,
-        unit_price: i.unit_price,
-        total: i.unit_price * i.quantity,
-      })),
-      subtotal,
-      total: subtotal,
-      payment_method: payment,
-      status: 'pendente',
-    });
-    clearCart();
-    setSuccess(true);
-    setSubmitting(false);
+
+    try {
+      // 1. Cria a mensagem formatada para o WhatsApp
+      const numeroVendedor = "5511999999999"; // <-- COLOQUE SEU NÚMERO AQUI
+      
+      let mensagemWhatsapp = `*Novo Pedido - Impressão 3D* 🚀\n\n`;
+      mensagemWhatsapp += `*Cliente:* ${form.name}\n`;
+      mensagemWhatsapp += `*Telefone:* ${form.phone || 'Não informado'}\n`;
+      mensagemWhatsapp += `*Endereço:* ${form.address || 'Não informado'}\n`;
+      mensagemWhatsapp += `*Pagamento:* ${paymentMethods.find(m => m.value === payment)?.label}\n\n`;
+      
+      mensagemWhatsapp += `*Itens do Pedido:*\n`;
+      items.forEach(item => {
+        mensagemWhatsapp += `- ${item.quantity}x ${item.product_name} (R$ ${item.unit_price.toFixed(2)}/un)\n`;
+      });
+      
+      mensagemWhatsapp += `\n*Total:* R$ ${subtotal.toFixed(2)}\n`;
+      
+      if (form.notes) {
+        mensagemWhatsapp += `\n*Observações:* ${form.notes}\n`;
+      }
+
+      // 2. Transforma a mensagem num formato que o navegador entende (URL Encoded)
+      const mensagemCodificada = encodeURIComponent(mensagemWhatsapp);
+      
+      // 3. Limpa o carrinho e mostra a tela de sucesso
+      clearCart();
+      setSuccess(true);
+      
+      // 4. Abre o WhatsApp em uma nova aba com os dados do pedido
+      window.open(`https://wa.me/${numeroVendedor}?text=${mensagemCodificada}`, '_blank');
+      
+    } catch (error) {
+       toast({ title: 'Erro ao processar', description: 'Tente novamente.', variant: 'destructive' });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
+  // As telas de sucesso e carrinho vazio foram movidas para cima (antes do return principal) para o React funcionar corretamente
   if (success) {
     return (
       <div className="max-w-lg mx-auto px-4 py-20 text-center">
@@ -64,7 +80,7 @@ export default function Checkout() {
           <CheckCircle className="w-8 h-8 text-green-600" />
         </div>
         <h2 className="text-2xl font-bold font-space">Pedido Realizado!</h2>
-        <p className="text-muted-foreground mt-2">Recebemos seu pedido. Entraremos em contato em breve para confirmar o pagamento e envio.</p>
+        <p className="text-muted-foreground mt-2">Você foi redirecionado para o nosso WhatsApp para concluirmos o seu pedido.</p>
         <Link to="/">
           <Button className="mt-6 bg-primary text-primary-foreground hover:bg-primary/90">Voltar ao Início</Button>
         </Link>
@@ -142,7 +158,7 @@ export default function Checkout() {
         <div><Label>Observações</Label><Textarea value={form.notes} onChange={e => handleChange('notes', e.target.value)} rows={2} placeholder="Informações adicionais..." /></div>
 
         <Button type="submit" size="lg" className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-semibold" disabled={submitting}>
-          {submitting ? 'Processando...' : 'Confirmar Pedido'}
+          {submitting ? 'Processando...' : 'Confirmar Pedido (Abrir WhatsApp)'}
         </Button>
       </form>
     </div>

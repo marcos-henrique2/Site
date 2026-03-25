@@ -1,23 +1,23 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
+import { apiClient } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Package, ShoppingCart, FolderOpen, DollarSign } from 'lucide-react';
 
 export default function Dashboard() {
   const { data: products = [] } = useQuery({
     queryKey: ['admin-products'],
-    queryFn: () => base44.entities.Product.list('-created_date', 500),
+    queryFn: () => apiClient.products.getAll(), // Corrigido para a nossa API local
   });
 
   const { data: orders = [] } = useQuery({
     queryKey: ['admin-orders'],
-    queryFn: () => base44.entities.Order.list('-created_date', 500),
+    queryFn: () => apiClient.orders.getAll(), // Corrigido para a nossa API local
   });
 
   const { data: categories = [] } = useQuery({
     queryKey: ['admin-categories'],
-    queryFn: () => base44.entities.Category.list('order', 100),
+    queryFn: () => apiClient.categories.getAll(), // Corrigido para a nossa API local
   });
 
   const totalRevenue = orders.reduce((s, o) => s + (o.total || 0), 0);

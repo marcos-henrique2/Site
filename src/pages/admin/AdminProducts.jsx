@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
+import { apiClient } from '@/api/base44Client';
 import { Plus, Pencil, Trash2, Package, Image as ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,19 +31,19 @@ export default function AdminProducts() {
 
   const { data: products = [], isLoading } = useQuery({
     queryKey: ['admin-products'],
-    queryFn: () => base44.entities.Product.list('-created_date', 500),
+    queryFn: () => apiClient.products.getAll(),
   });
 
   const { data: categories = [] } = useQuery({
     queryKey: ['admin-categories'],
-    queryFn: () => base44.entities.Category.list('order', 100),
+    queryFn: () => apiClient.categories.getAll(),
   });
 
   const saveMutation = useMutation({
-    mutationFn: async (data) => {
+    mutationFn: async (/** @type {any} */ data) => {
       const payload = { ...data, price: parseFloat(data.price) || 0, compare_price: parseFloat(data.compare_price) || 0, stock_quantity: parseInt(data.stock_quantity) || 0 };
-      if (editing) return base44.entities.Product.update(editing.id, payload);
-      return base44.entities.Product.create(payload);
+      if (editing) return apiClient.products.update(editing.id, payload);
+      return apiClient.products.create(payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-products'] });
@@ -53,7 +53,7 @@ export default function AdminProducts() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.Product.delete(id),
+    mutationFn: (/** @type {string|number} */ id) => apiClient.products.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-products'] });
       toast({ title: 'Produto excluído!' });
@@ -68,11 +68,16 @@ export default function AdminProducts() {
     setOpen(true);
   };
 
-  const handleImageUpload = async (e) => {
+  const handleImageUpload = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const { file_url } = await base44.integrations.Core.UploadFile({ file });
-    setForm(prev => ({ ...prev, images: [...(prev.images || []), file_url] }));
+    
+    // Converte a imagem localmente para não depender de servidor externo
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setForm(prev => ({ ...prev, images: [...(prev.images || []), String(reader.result)] }));
+    };
+    reader.readAsDataURL(file);
   };
 
   const removeImage = (idx) => {
@@ -178,7 +183,7 @@ export default function AdminProducts() {
               <div><Label>Cor</Label><Input value={form.color} onChange={e => setForm(p => ({ ...p, color: e.target.value }))} /></div>
               <div><Label>Dimensões</Label><Input value={form.dimensions} onChange={e => setForm(p => ({ ...p, dimensions: e.target.value }))} placeholder="ex: 10x5x3 cm" /></div>
               <div><Label>Peso</Label><Input value={form.weight} onChange={e => setForm(p => ({ ...p, weight: e.target.value }))} placeholder="ex: 50g" /></div>
-              <div><Label>Quantidade em Estoque</Label><Input type="number" value={form.stock_quantity} onChange={e => setForm(p => ({ ...p, stock_quantity: e.target.value }))} /></div>
+              <div><Label>Quantidade em Estoque</Label><Input type="number" value={form.stock_quantity} onChange={e => setForm(p => ({ ...p, stock_quantity: Number(e.target.value) }))} /></div>
               <div><Label>Tempo de Impressão</Label><Input value={form.print_time} onChange={e => setForm(p => ({ ...p, print_time: e.target.value }))} placeholder="ex: 4 horas" /></div>
               <div><Label>Preenchimento</Label><Input value={form.infill} onChange={e => setForm(p => ({ ...p, infill: e.target.value }))} placeholder="ex: 20%" /></div>
             </div>

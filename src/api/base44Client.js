@@ -1,14 +1,20 @@
-import { createClient } from '@base44/sdk';
-import { appParams } from '@/lib/app-params';
+// Substitua esta URL pelo seu futuro banco de dados (ex: Supabase, seu próprio Node.js, ou um arquivo JSON local)
+const API_BASE_URL = 'http://localhost:3000/api'; 
 
-const { appId, token, functionsVersion, appBaseUrl } = appParams;
-
-//Create a client with authentication required
-export const base44 = createClient({
-  appId,
-  token,
-  functionsVersion,
-  serverUrl: '',
-  requiresAuth: false,
-  appBaseUrl
-});
+export const apiClient = {
+  products: {
+    getAll: async () => {
+      // Exemplo usando a função nativa fetch do navegador
+      const response = await fetch(`${API_BASE_URL}/products`);
+      if (!response.ok) throw new Error('Erro ao buscar produtos');
+      return response.json();
+    }
+  },
+  categories: {
+    getAll: async () => {
+      const response = await fetch(`${API_BASE_URL}/categories`);
+      if (!response.ok) throw new Error('Erro ao buscar categorias');
+      return response.json();
+    }
+  }
+};

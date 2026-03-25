@@ -6,12 +6,12 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
-import { base44 } from '@/api/base44Client';
 
+// Informações de contato ajustadas para você preencher com os dados da sua loja
 const contactInfo = [
-  { icon: Mail, label: 'E-mail', value: 'contato@print3d.com.br' },
+  { icon: Mail, label: 'E-mail', value: 'contato@sualoja.com.br' },
   { icon: Phone, label: 'Telefone', value: '(11) 99999-9999' },
-  { icon: MapPin, label: 'Localização', value: 'São Paulo, SP' },
+  { icon: MapPin, label: 'Localização', value: 'Sua Cidade, Estado' },
 ];
 
 export default function Contact() {
@@ -22,15 +22,28 @@ export default function Contact() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.name || !form.email || !form.message) return;
+    
     setSending(true);
-    await base44.integrations.Core.SendEmail({
-      to: 'contato@print3d.com.br',
-      subject: `Contato de ${form.name}`,
-      body: `Nome: ${form.name}\nEmail: ${form.email}\n\nMensagem:\n${form.message}`
-    });
-    toast({ title: 'Mensagem enviada!', description: 'Entraremos em contato em breve.' });
-    setForm({ name: '', email: '', message: '' });
-    setSending(false);
+
+    try {
+      // Simulando o tempo de envio de um e-mail para manter a animação do botão
+      await new Promise(resolve => setTimeout(resolve, 1500));
+
+      /* Para enviar de verdade e de graça no futuro, você usaria algo assim:
+      await fetch('URL_DO_SEU_FORMSPREE_OU_BACKEND', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form)
+      });
+      */
+
+      toast({ title: 'Mensagem enviada!', description: 'Entraremos em contato em breve.' });
+      setForm({ name: '', email: '', message: '' });
+    } catch (error) {
+      toast({ title: 'Erro ao enviar', description: 'Tente novamente.', variant: 'destructive' });
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -57,9 +70,18 @@ export default function Contact() {
       <Card className="max-w-xl mx-auto">
         <CardContent className="pt-6">
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div><Label>Nome</Label><Input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} required /></div>
-            <div><Label>E-mail</Label><Input type="email" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} required /></div>
-            <div><Label>Mensagem</Label><Textarea value={form.message} onChange={e => setForm(p => ({ ...p, message: e.target.value }))} rows={5} required /></div>
+            <div>
+              <Label>Nome</Label>
+              <Input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} required />
+            </div>
+            <div>
+              <Label>E-mail</Label>
+              <Input type="email" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} required />
+            </div>
+            <div>
+              <Label>Mensagem</Label>
+              <Textarea value={form.message} onChange={e => setForm(p => ({ ...p, message: e.target.value }))} rows={5} required />
+            </div>
             <Button type="submit" className="w-full bg-primary text-primary-foreground hover:bg-primary/90" disabled={sending}>
               <Send className="w-4 h-4 mr-2" /> {sending ? 'Enviando...' : 'Enviar Mensagem'}
             </Button>

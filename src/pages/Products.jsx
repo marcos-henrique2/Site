@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
+import { apiClient } from '@/api/base44Client';
 import { Search, SlidersHorizontal, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -20,12 +20,12 @@ export default function Products() {
 
   const { data: products = [], isLoading } = useQuery({
     queryKey: ['products'],
-    queryFn: () => base44.entities.Product.filter({ is_active: true }, '-created_date', 200),
+    queryFn: () => apiClient.products.getAll(), // Linha corrigida!
   });
 
   const { data: categories = [] } = useQuery({
     queryKey: ['categories'],
-    queryFn: () => base44.entities.Category.filter({ is_active: true }, 'order', 50),
+    queryFn: () => apiClient.categories.getAll(), // Linha corrigida!
   });
 
   const filtered = useMemo(() => {

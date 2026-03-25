@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
+import { apiClient } from '@/api/base44Client';
 import { Plus, Pencil, Trash2, FolderOpen, Image as ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,14 +23,15 @@ export default function AdminCategories() {
 
   const { data: categories = [], isLoading } = useQuery({
     queryKey: ['admin-categories'],
-    queryFn: () => base44.entities.Category.list('order', 100),
+    queryFn: () => apiClient.categories.getAll(),
   });
 
   const saveMutation = useMutation({
-    mutationFn: async (data) => {
-      const payload = { ...data, order: parseInt(data.order) || 0 };
-      if (editing) return base44.entities.Category.update(editing.id, payload);
-      return base44.entities.Category.create(payload);
+    // Ensinamos ao editor que 'data' vai receber um objeto (neste caso, o nosso formulário)
+    mutationFn: async (/** @type {any} */ data) => {
+      const payload = { ...data, order: parseInt(String(data.order)) || 0 };
+      if (editing) return apiClient.categories.update(editing.id, payload);
+      return apiClient.categories.create(payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-categories'] });
@@ -40,7 +41,8 @@ export default function AdminCategories() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.Category.delete(id),
+    // Ensinamos ao editor que 'id' é um texto ou número
+    mutationFn: (/** @type {string|number} */ id) => apiClient.categories.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-categories'] });
       toast({ title: 'Categoria excluída!' });
@@ -55,11 +57,16 @@ export default function AdminCategories() {
     setOpen(true);
   };
 
-  const handleImageUpload = async (e) => {
+  const handleImageUpload = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const { file_url } = await base44.integrations.Core.UploadFile({ file });
-    setForm(prev => ({ ...prev, image_url: file_url }));
+    
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      // Usamos String() para forçar o editor a entender que é um texto
+      setForm(prev => ({ ...prev, image_url: String(reader.result) }));
+    };
+    reader.readAsDataURL(file);
   };
 
   return (
@@ -127,7 +134,8 @@ export default function AdminCategories() {
             <div><Label>Nome *</Label><Input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value, slug: e.target.value.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') }))} required /></div>
             <div><Label>Slug</Label><Input value={form.slug} onChange={e => setForm(p => ({ ...p, slug: e.target.value }))} /></div>
             <div><Label>Descrição</Label><Textarea value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} rows={3} /></div>
-            <div><Label>Ordem</Label><Input type="number" value={form.order} onChange={e => setForm(p => ({ ...p, order: e.target.value }))} /></div>
+            {/* Aqui usamos Number() para forçar a conversão de texto para número */}
+            <div><Label>Ordem</Label><Input type="number" value={form.order} onChange={e => setForm(p => ({ ...p, order: Number(e.target.value) }))} /></div>
             <div>
               <Label>Imagem</Label>
               {form.image_url && (
