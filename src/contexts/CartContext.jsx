@@ -1,7 +1,11 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
-const CartContext = createContext();
+// A correção está aqui: adicionamos null dentro dos parênteses
+const CartContext = createContext(null);
 
+/**
+ * @param {{ children: React.ReactNode }} props
+ */
 export function CartProvider({ children }) {
   const [items, setItems] = useState(() => {
     const saved = localStorage.getItem('cart');
