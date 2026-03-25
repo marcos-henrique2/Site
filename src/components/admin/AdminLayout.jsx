@@ -1,31 +1,59 @@
 import React from 'react';
+import { Link, Outlet, useLocation } from 'react-router-dom';
+import { LayoutDashboard, Package, FolderTree, ShoppingCart, Home } from 'lucide-react';
 
-const UserNotRegisteredError = () => {
+export default function AdminLayout() {
+  const location = useLocation();
+
+  // Os links do seu menu lateral
+  const menuItems = [
+    { path: '/admin', label: 'Dashboard', icon: LayoutDashboard },
+    { path: '/admin/produtos', label: 'Produtos', icon: Package },
+    { path: '/admin/categorias', label: 'Categorias', icon: FolderTree },
+    { path: '/admin/pedidos', label: 'Pedidos', icon: ShoppingCart },
+  ];
+
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-white to-slate-50">
-      <div className="max-w-md w-full p-8 bg-white rounded-lg shadow-lg border border-slate-100">
-        <div className="text-center">
-          <div className="inline-flex items-center justify-center w-16 h-16 mb-6 rounded-full bg-orange-100">
-            <svg className="w-8 h-8 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-          </div>
-          <h1 className="text-3xl font-bold text-slate-900 mb-4">Access Restricted</h1>
-          <p className="text-slate-600 mb-8">
-            You are not registered to use this application. Please contact the app administrator to request access.
-          </p>
-          <div className="p-4 bg-slate-50 rounded-md text-sm text-slate-600">
-            <p>If you believe this is an error, you can:</p>
-            <ul className="list-disc list-inside mt-2 space-y-1">
-              <li>Verify you are logged in with the correct account</li>
-              <li>Contact the app administrator for access</li>
-              <li>Try logging out and back in again</li>
-            </ul>
-          </div>
+    <div className="min-h-screen bg-slate-50 flex">
+      {/* Menu Lateral (Sidebar) */}
+      <aside className="w-64 bg-white border-r border-border flex flex-col">
+        <div className="p-6 border-b border-border">
+          <h2 className="text-xl font-bold font-space text-primary">Mallki Print</h2>
         </div>
-      </div>
+        
+        <nav className="flex-1 p-4 space-y-2">
+          {menuItems.map((item) => {
+            const isActive = location.pathname === item.path;
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                  isActive 
+                    ? 'bg-primary/10 text-primary font-medium' 
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                }`}
+              >
+                <item.icon className="w-5 h-5" />
+                {item.label}
+              </Link>
+            );
+          })}
+        </nav>
+
+        {/* Botão para voltar para a loja */}
+        <div className="p-4 border-t border-border">
+          <Link to="/" className="flex items-center gap-3 px-4 py-3 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
+            <Home className="w-5 h-5" />
+            Ver a Loja
+          </Link>
+        </div>
+      </aside>
+
+      {/* Área onde o conteúdo das páginas vai aparecer */}
+      <main className="flex-1 p-8 overflow-y-auto">
+        <Outlet />
+      </main>
     </div>
   );
-};
-
-export default UserNotRegisteredError;
+}

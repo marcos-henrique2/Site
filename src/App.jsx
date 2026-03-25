@@ -4,7 +4,6 @@ import { queryClientInstance } from '@/lib/query-client'
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
-import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import { CartProvider } from '@/contexts/CartContext';
 
 import StoreLayout from '@/components/store/StoreLayout';
@@ -22,8 +21,9 @@ import AdminCategories from '@/pages/admin/AdminCategories';
 import AdminOrders from '@/pages/admin/AdminOrders';
 
 const AuthenticatedApp = () => {
-  const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
+  const { isLoadingAuth, isLoadingPublicSettings } = useAuth();
 
+  // Mantemos apenas a tela de carregamento (a rodinha girando) por precaução
   if (isLoadingPublicSettings || isLoadingAuth) {
     return (
       <div className="fixed inset-0 flex items-center justify-center">
@@ -32,18 +32,12 @@ const AuthenticatedApp = () => {
     );
   }
 
-  if (authError) {
-    if (authError.type === 'user_not_registered') {
-      return <UserNotRegisteredError />;
-    } else if (authError.type === 'auth_required') {
-      navigateToLogin();
-      return null;
-    }
-  }
+  // Removemos completamente o bloco de "authError" e de bloqueio de registro!
 
   return (
     <CartProvider>
       <Routes>
+        {/* Rotas Públicas da Loja */}
         <Route element={<StoreLayout />}>
           <Route path="/" element={<Home />} />
           <Route path="/produtos" element={<Products />} />
@@ -53,18 +47,20 @@ const AuthenticatedApp = () => {
           <Route path="/checkout" element={<Checkout />} />
           <Route path="/contato" element={<Contact />} />
         </Route>
+        
+        {/* Rotas de Administração Totalmente Livres */}
         <Route element={<AdminLayout />}>
           <Route path="/admin" element={<Dashboard />} />
           <Route path="/admin/produtos" element={<AdminProducts />} />
           <Route path="/admin/categorias" element={<AdminCategories />} />
           <Route path="/admin/pedidos" element={<AdminOrders />} />
         </Route>
+
         <Route path="*" element={<PageNotFound />} />
       </Routes>
     </CartProvider>
   );
 };
-
 
 function App() {
   return (
