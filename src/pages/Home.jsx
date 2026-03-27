@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { apiClient } from '@/api/base44Client'; // Importação corrigida
+import { apiClient } from '@/api/base44Client';
 import { ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import HeroSection from '@/components/store/HeroSection';
@@ -10,23 +10,24 @@ import CategoryCard from '@/components/store/CategoryCard';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function Home() {
+  // Busca os produtos em destaque direto do Supabase
   const { data: featured = [], isLoading: loadingProducts } = useQuery({
     queryKey: ['featured-products'],
     queryFn: async () => {
-      // Busca todos os produtos e filtra apenas os ativos e em destaque (limite de 8)
       const allProducts = await apiClient.products.getAll();
+      // Garante que só mostra os que estão ativos E em destaque
       return allProducts
-        .filter(p => p.is_active && p.is_featured)
+        .filter(p => p.is_active === true && p.is_featured === true)
         .slice(0, 8);
     },
   });
 
+  // Busca as categorias direto do Supabase
   const { data: categories = [], isLoading: loadingCategories } = useQuery({
     queryKey: ['categories'],
     queryFn: async () => {
-      // Busca todas as categorias e filtra apenas as ativas
       const allCategories = await apiClient.categories.getAll();
-      return allCategories.filter(c => c.is_active);
+      return allCategories.filter(c => c.is_active === true);
     },
   });
 
@@ -34,13 +35,13 @@ export default function Home() {
     <div>
       <HeroSection />
 
-      {/* Categories */}
+      {/* Secção de Categorias */}
       {categories.length > 0 && (
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
           <div className="flex items-center justify-between mb-8">
             <div>
               <h2 className="text-2xl font-bold font-space">Categorias</h2>
-              <p className="text-muted-foreground text-sm mt-1">Explore nossas coleções</p>
+              <p className="text-muted-foreground text-sm mt-1">Explore as nossas coleções</p>
             </div>
             <Link to="/categorias">
               <Button variant="ghost" className="text-primary hover:text-primary">
@@ -59,12 +60,12 @@ export default function Home() {
         </section>
       )}
 
-      {/* Featured Products */}
+      {/* Secção de Produtos em Destaque */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="flex items-center justify-between mb-8">
           <div>
             <h2 className="text-2xl font-bold font-space">Produtos em Destaque</h2>
-            <p className="text-muted-foreground text-sm mt-1">Os mais procurados</p>
+            <p className="text-muted-foreground text-sm mt-1">Os mais procurados da Mallki Print</p>
           </div>
           <Link to="/produtos">
             <Button variant="ghost" className="text-primary hover:text-primary">
