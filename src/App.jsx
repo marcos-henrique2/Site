@@ -17,6 +17,7 @@ import Checkout from '@/pages/Checkout';
 import Contact from '@/pages/Contact';
 import Dashboard from '@/pages/admin/Dashboard';
 import AdminProducts from '@/pages/admin/AdminProducts';
+import Login from '@/pages/admin/Login';
 import AdminCategories from '@/pages/admin/AdminCategories';
 import AdminOrders from '@/pages/admin/AdminOrders';
 
@@ -32,8 +33,6 @@ const AuthenticatedApp = () => {
     );
   }
 
-  // Removemos completamente o bloco de "authError" e de bloqueio de registro!
-
   return (
     <CartProvider>
       <Routes>
@@ -48,7 +47,10 @@ const AuthenticatedApp = () => {
           <Route path="/contato" element={<Contact />} />
         </Route>
         
-        {/* Rotas de Administração Totalmente Livres */}
+        {/* Rota de Login (Fica de fora do AdminLayout para não pedir senha para ver a tela de senha) */}
+        <Route path="/admin/login" element={<Login />} />
+
+        {/* Rotas de Administração Protegidas */}
         <Route element={<AdminLayout />}>
           <Route path="/admin" element={<Dashboard />} />
           <Route path="/admin/produtos" element={<AdminProducts />} />

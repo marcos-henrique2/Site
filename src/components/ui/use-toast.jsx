@@ -1,164 +1,67 @@
-// Inspired by react-hot-toast library
-import { useState, useEffect } from "react";
+import { useState, useEffect } from "react"
 
-const TOAST_LIMIT = 20;
-const TOAST_REMOVE_DELAY = 1000000;
+let memoryState = []
+let listeners = []
 
-const actionTypes = {
-  ADD_TOAST: "ADD_TOAST",
-  UPDATE_TOAST: "UPDATE_TOAST",
-  DISMISS_TOAST: "DISMISS_TOAST",
-  REMOVE_TOAST: "REMOVE_TOAST",
-};
-
-let count = 0;
-
-function genId() {
-  count = (count + 1) % Number.MAX_VALUE;
-  return count.toString();
+function notifyListeners() {
+  listeners.forEach((listener) => listener(memoryState))
 }
 
-const toastTimeouts = new Map();
-
-const addToRemoveQueue = (toastId) => {
-  if (toastTimeouts.has(toastId)) {
-    return;
+export function toast({ title, description, variant, action, ...props }) {
+  const id = Math.random().toString(36).substring(2, 9)
+  
+  const newToast = {
+    id,
+    title,
+    description,
+    variant,
+    action,
+    ...props,
   }
 
-  const timeout = setTimeout(() => {
-    toastTimeouts.delete(toastId);
-    dispatch({
-      type: actionTypes.REMOVE_TOAST,
-      toastId,
-    });
-  }, TOAST_REMOVE_DELAY);
+  // Adiciona a nova notificação na tela
+  memoryState = [...memoryState, newToast]
+  notifyListeners()
 
-  toastTimeouts.set(toastId, timeout);
-};
-
-const _clearFromRemoveQueue = (toastId) => {
-  const timeout = toastTimeouts.get(toastId);
-  if (timeout) {
-    clearTimeout(timeout);
-    toastTimeouts.delete(toastId);
-  }
-};
-
-export const reducer = (state, action) => {
-  switch (action.type) {
-    case actionTypes.ADD_TOAST:
-      return {
-        ...state,
-        toasts: [action.toast, ...state.toasts].slice(0, TOAST_LIMIT),
-      };
-
-    case actionTypes.UPDATE_TOAST:
-      return {
-        ...state,
-        toasts: state.toasts.map((t) =>
-          t.id === action.toast.id ? { ...t, ...action.toast } : t
-        ),
-      };
-
-    case actionTypes.DISMISS_TOAST: {
-      const { toastId } = action;
-
-      // ! Side effects ! - This could be extracted into a dismissToast() action,
-      // but I'll keep it here for simplicity
-      if (toastId) {
-        addToRemoveQueue(toastId);
-      } else {
-        state.toasts.forEach((toast) => {
-          addToRemoveQueue(toast.id);
-        });
-      }
-
-      return {
-        ...state,
-        toasts: state.toasts.map((t) =>
-          t.id === toastId || toastId === undefined
-            ? {
-                ...t,
-                open: false,
-              }
-            : t
-        ),
-      };
-    }
-    case actionTypes.REMOVE_TOAST:
-      if (action.toastId === undefined) {
-        return {
-          ...state,
-          toasts: [],
-        };
-      }
-      return {
-        ...state,
-        toasts: state.toasts.filter((t) => t.id !== action.toastId),
-      };
-  }
-};
-
-const listeners = [];
-
-let memoryState = { toasts: [] };
-
-function dispatch(action) {
-  memoryState = reducer(memoryState, action);
-  listeners.forEach((listener) => {
-    listener(memoryState);
-  });
-}
-
-function toast({ ...props }) {
-  const id = genId();
-
-  const update = (props) =>
-    dispatch({
-      type: actionTypes.UPDATE_TOAST,
-      toast: { ...props, id },
-    });
-
-  const dismiss = () =>
-    dispatch({ type: actionTypes.DISMISS_TOAST, toastId: id });
-
-  dispatch({
-    type: actionTypes.ADD_TOAST,
-    toast: {
-      ...props,
-      id,
-      open: true,
-      onOpenChange: (open) => {
-        if (!open) dismiss();
-      },
-    },
-  });
+  // MÁGICA: O relógio que obriga a fechar sozinha após 3 segundos!
+  setTimeout(() => {
+    dismiss(id)
+  }, 3000)
 
   return {
     id,
-    dismiss,
-    update,
-  };
+    dismiss: () => dismiss(id),
+    update: (props) => {
+      memoryState = memoryState.map((t) => (t.id === id ? { ...t, ...props } : t))
+      notifyListeners()
+    },
+  }
 }
 
-function useToast() {
-  const [state, setState] = useState(memoryState);
+export function dismiss(toastId) {
+  if (toastId) {
+    // Remove apenas a que foi clicada/venceu o tempo
+    memoryState = memoryState.filter((t) => t.id !== toastId)
+  } else {
+    // Remove todas
+    memoryState = []
+  }
+  notifyListeners()
+}
+
+export function useToast() {
+  const [toasts, setToasts] = useState(memoryState)
 
   useEffect(() => {
-    listeners.push(setState);
+    listeners.push(setToasts)
     return () => {
-      const index = listeners.indexOf(setState);
-      if (index > -1) {
-        listeners.splice(index, 1);
-      }
-    };
-  }, [state]);
+      listeners = listeners.filter((l) => l !== setToasts)
+    }
+  }, [])
 
   return {
-    ...state,
     toast,
-    dismiss: (toastId) => dispatch({ type: actionTypes.DISMISS_TOAST, toastId }),
-  };
+    dismiss,
+    toasts,
+  }
 }
-
-export { useToast, toast }; 

@@ -1,11 +1,17 @@
 import React from 'react';
-import { Link, Outlet, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Package, FolderTree, ShoppingCart, Home } from 'lucide-react';
+import { Link, Outlet, useLocation, Navigate } from 'react-router-dom';
+import { LayoutDashboard, Package, FolderTree, ShoppingCart, Home, LogOut } from 'lucide-react';
+import { useAuth } from '@/lib/AuthContext';
 
 export default function AdminLayout() {
   const location = useLocation();
+  const { isAuthenticated, logout } = useAuth();
 
-  // Os links do seu menu lateral
+  // Se não estiver logado, redireciona para o login IMEDIATAMENTE!
+  if (!isAuthenticated) {
+    return <Navigate to="/admin/login" replace />;
+  }
+
   const menuItems = [
     { path: '/admin', label: 'Dashboard', icon: LayoutDashboard },
     { path: '/admin/produtos', label: 'Produtos', icon: Package },
@@ -15,7 +21,6 @@ export default function AdminLayout() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex">
-      {/* Menu Lateral (Sidebar) */}
       <aside className="w-64 bg-white border-r border-border flex flex-col">
         <div className="p-6 border-b border-border">
           <h2 className="text-xl font-bold font-space text-primary">Mallki Print</h2>
@@ -29,9 +34,7 @@ export default function AdminLayout() {
                 key={item.path}
                 to={item.path}
                 className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                  isActive 
-                    ? 'bg-primary/10 text-primary font-medium' 
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                  isActive ? 'bg-primary/10 text-primary font-medium' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                 }`}
               >
                 <item.icon className="w-5 h-5" />
@@ -41,16 +44,18 @@ export default function AdminLayout() {
           })}
         </nav>
 
-        {/* Botão para voltar para a loja */}
-        <div className="p-4 border-t border-border">
+        <div className="p-4 border-t border-border flex flex-col gap-2">
           <Link to="/" className="flex items-center gap-3 px-4 py-3 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
             <Home className="w-5 h-5" />
             Ver a Loja
           </Link>
+          <button onClick={logout} className="flex items-center gap-3 px-4 py-3 rounded-lg text-red-500 hover:bg-red-50 transition-colors w-full text-left">
+            <LogOut className="w-5 h-5" />
+            Sair do Painel
+          </button>
         </div>
       </aside>
 
-      {/* Área onde o conteúdo das páginas vai aparecer */}
       <main className="flex-1 p-8 overflow-y-auto">
         <Outlet />
       </main>

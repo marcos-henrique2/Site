@@ -3,28 +3,30 @@ import React, { createContext, useState, useContext } from 'react';
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
-  // Simulamos que você já está logado como Admin para poder acessar o painel de produtos!
-  const [user, setUser] = useState({ name: 'Admin', role: 'admin' });
-  const [isAuthenticated, setIsAuthenticated] = useState(true);
-  const [isLoadingAuth, setIsLoadingAuth] = useState(false);
-  const [isLoadingPublicSettings, setIsLoadingPublicSettings] = useState(false);
-  const [authError, setAuthError] = useState(null);
-  const [appPublicSettings, setAppPublicSettings] = useState({});
+  // Verifica se você já logou antes
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    return localStorage.getItem('mallki_admin_logged') === 'true';
+  });
 
-  const checkAppState = async () => {};
-  
-  const logout = () => {
-    setUser(null);
-    setIsAuthenticated(false);
+  // Função de login com uma senha de teste
+  const login = (email, password) => {
+    // Por enquanto, a senha está aqui no código. 
+    // Quando formos para o banco de dados real, isso será verificado na nuvem!
+    if (email === 'admin@mallkiprint.com' && password === 'mallki123') {
+      setIsAuthenticated(true);
+      localStorage.setItem('mallki_admin_logged', 'true');
+      return true;
+    }
+    return false;
   };
 
-  const navigateToLogin = () => {};
+  const logout = () => {
+    setIsAuthenticated(false);
+    localStorage.removeItem('mallki_admin_logged');
+  };
 
   return (
-    <AuthContext.Provider value={{ 
-      user, isAuthenticated, isLoadingAuth, isLoadingPublicSettings,
-      authError, appPublicSettings, logout, navigateToLogin, checkAppState
-    }}>
+    <AuthContext.Provider value={{ isAuthenticated, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

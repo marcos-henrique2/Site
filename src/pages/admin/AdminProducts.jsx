@@ -28,6 +28,7 @@ export default function AdminProducts() {
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyProduct);
   const [tagInput, setTagInput] = useState('');
+  const [isUploading, setIsUploading] = useState(false); // NOVO: Estado para saber se a foto está a ser enviada
 
   const { data: products = [], isLoading } = useQuery({
     queryKey: ['admin-products'],
@@ -68,16 +69,23 @@ export default function AdminProducts() {
     setOpen(true);
   };
 
-  const handleImageUpload = (e) => {
+  // NOVO: Função de Upload ligada ao Supabase
+  const handleImageUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
     
-    // Converte a imagem localmente para não depender de servidor externo
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setForm(prev => ({ ...prev, images: [...(prev.images || []), String(reader.result)] }));
-    };
-    reader.readAsDataURL(file);
+    setIsUploading(true);
+    try {
+      // Envia a foto para a nuvem e recebe o link público
+      const imageUrl = await apiClient.uploadImage(file);
+      setForm(prev => ({ ...prev, images: [...(prev.images || []), imageUrl] }));
+      toast({ title: 'Foto adicionada com sucesso!' });
+    } catch (error) {
+      console.error("Erro no upload:", error);
+      toast({ title: 'Erro ao enviar a foto', variant: 'destructive' });
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const removeImage = (idx) => {
@@ -202,9 +210,15 @@ export default function AdminProducts() {
                     </button>
                   </div>
                 ))}
-                <label className="w-20 h-20 rounded-lg border-2 border-dashed border-border flex items-center justify-center cursor-pointer hover:border-primary transition-colors">
-                  <ImageIcon className="w-5 h-5 text-muted-foreground" />
-                  <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                
+                {/* Botão de Upload com estado de carregamento */}
+                <label className={`w-20 h-20 rounded-lg border-2 border-dashed border-border flex items-center justify-center transition-colors ${isUploading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:border-primary'}`}>
+                  {isUploading ? (
+                    <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <ImageIcon className="w-5 h-5 text-muted-foreground" />
+                  )}
+                  <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={isUploading} />
                 </label>
               </div>
             </div>
@@ -239,7 +253,7 @@ export default function AdminProducts() {
 
             <div className="flex justify-end gap-2 pt-4">
               <Button type="button" variant="outline" onClick={closeDialog}>Cancelar</Button>
-              <Button type="submit" className="bg-primary text-primary-foreground hover:bg-primary/90" disabled={saveMutation.isPending}>
+              <Button type="submit" className="bg-primary text-primary-foreground hover:bg-primary/90" disabled={saveMutation.isPending || isUploading}>
                 {saveMutation.isPending ? 'Salvando...' : 'Salvar'}
               </Button>
             </div>
