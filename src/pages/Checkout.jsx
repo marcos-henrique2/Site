@@ -9,6 +9,7 @@ import { Separator } from '@/components/ui/separator';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useCart } from '@/contexts/CartContext';
 import { useToast } from '@/components/ui/use-toast';
+import { apiClient } from '@/api/base44Client'; // IMPORTANTE: Importamos o motor aqui!
 
 const paymentMethods = [
   { value: 'cartao', label: 'Mercado Pago', icon: CreditCard, desc: 'Cartão, boleto ou Pix via MP' },
@@ -35,10 +36,27 @@ export default function Checkout() {
     setSubmitting(true);
 
     try {
-      // 1. Cria a mensagem formatada para o WhatsApp
-      const numeroVendedor = "5511999999999"; // <-- COLOQUE SEU NÚMERO AQUI
+      // 1. Guarda o pedido no Supabase para aparecer no seu Painel de Admin!
+      const novoPedido = {
+        status: 'Pendente',
+        total: subtotal,
+        items: items, // O Supabase aceita a lista de itens diretamente
+        customer: {
+          name: form.name,
+          email: form.email,
+          phone: form.phone,
+          address: form.address,
+          payment: paymentMethods.find(m => m.value === payment)?.label,
+          notes: form.notes
+        }
+      };
+
+      await apiClient.orders.create(novoPedido);
+
+      // 2. Cria a mensagem formatada para o WhatsApp
+      const numeroVendedor = "5562982262543"; // <-- COLOQUE AQUI O SEU NÚMERO
       
-      let mensagemWhatsapp = `*Novo Pedido - Impressão 3D* 🚀\n\n`;
+      let mensagemWhatsapp = `*Novo Pedido - Mallki Print* 🚀\n\n`;
       mensagemWhatsapp += `*Cliente:* ${form.name}\n`;
       mensagemWhatsapp += `*Telefone:* ${form.phone || 'Não informado'}\n`;
       mensagemWhatsapp += `*Endereço:* ${form.address || 'Não informado'}\n`;
@@ -55,32 +73,32 @@ export default function Checkout() {
         mensagemWhatsapp += `\n*Observações:* ${form.notes}\n`;
       }
 
-      // 2. Transforma a mensagem num formato que o navegador entende (URL Encoded)
+      // 3. Transforma a mensagem num formato que o navegador entende
       const mensagemCodificada = encodeURIComponent(mensagemWhatsapp);
       
-      // 3. Limpa o carrinho e mostra a tela de sucesso
+      // 4. Limpa o carrinho e mostra o ecrã de sucesso
       clearCart();
       setSuccess(true);
       
-      // 4. Abre o WhatsApp em uma nova aba com os dados do pedido
+      // 5. Abre o WhatsApp numa nova aba
       window.open(`https://wa.me/${numeroVendedor}?text=${mensagemCodificada}`, '_blank');
       
     } catch (error) {
-       toast({ title: 'Erro ao processar', description: 'Tente novamente.', variant: 'destructive' });
+       console.error("Erro ao guardar pedido:", error);
+       toast({ title: 'Erro ao processar', description: 'Ocorreu um erro ao comunicar com a base de dados.', variant: 'destructive' });
     } finally {
       setSubmitting(false);
     }
   };
 
-  // As telas de sucesso e carrinho vazio foram movidas para cima (antes do return principal) para o React funcionar corretamente
   if (success) {
     return (
       <div className="max-w-lg mx-auto px-4 py-20 text-center">
         <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-6">
           <CheckCircle className="w-8 h-8 text-green-600" />
         </div>
-        <h2 className="text-2xl font-bold font-space">Pedido Realizado!</h2>
-        <p className="text-muted-foreground mt-2">Você foi redirecionado para o nosso WhatsApp para concluirmos o seu pedido.</p>
+        <h2 className="text-2xl font-bold font-space">Pedido Registado com Sucesso!</h2>
+        <p className="text-muted-foreground mt-2">O seu pedido foi guardado e está a ser reencaminhado para o nosso WhatsApp para finalizarmos os detalhes.</p>
         <Link to="/">
           <Button className="mt-6 bg-primary text-primary-foreground hover:bg-primary/90">Voltar ao Início</Button>
         </Link>
@@ -91,7 +109,7 @@ export default function Checkout() {
   if (items.length === 0) {
     return (
       <div className="max-w-lg mx-auto px-4 py-20 text-center">
-        <p className="text-muted-foreground">Seu carrinho está vazio.</p>
+        <p className="text-muted-foreground">O seu carrinho está vazio.</p>
         <Link to="/produtos"><Button variant="link" className="text-primary mt-2">Ver Produtos</Button></Link>
       </div>
     );
@@ -155,10 +173,10 @@ export default function Checkout() {
           </div>
         </div>
 
-        <div><Label>Observações</Label><Textarea value={form.notes} onChange={e => handleChange('notes', e.target.value)} rows={2} placeholder="Informações adicionais..." /></div>
+        <div><Label>Observações</Label><Textarea value={form.notes} onChange={e => handleChange('notes', e.target.value)} rows={2} placeholder="Informações adicionais da sua impressão..." /></div>
 
         <Button type="submit" size="lg" className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-semibold" disabled={submitting}>
-          {submitting ? 'Processando...' : 'Confirmar Pedido (Abrir WhatsApp)'}
+          {submitting ? 'A Processar...' : 'Confirmar Pedido (Abrir WhatsApp)'}
         </Button>
       </form>
     </div>

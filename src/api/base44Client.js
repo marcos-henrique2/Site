@@ -50,9 +50,16 @@ export const apiClient = {
 
   orders: {
     getAll: async () => {
-      const { data, error } = await supabase.from('orders').select('*');
+      const { data, error } = await supabase.from('orders').select('*').order('created_date', { ascending: false });
       if (error) throw error;
       return data || [];
+    },
+    // Nova função adicionada:
+    create: async (data) => {
+      const newItem = { ...data, id: generateId(), created_date: new Date().toISOString() };
+      const { error } = await supabase.from('orders').insert([newItem]);
+      if (error) throw error;
+      return newItem;
     },
     update: async (id, data) => {
       const { error } = await supabase.from('orders').update(data).eq('id', id);

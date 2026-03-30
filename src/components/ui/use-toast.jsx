@@ -7,15 +7,12 @@ function notifyListeners() {
   listeners.forEach((listener) => listener(memoryState))
 }
 
-export function toast({ title, description, variant, action, ...props }) {
+// MUDANÇA AQUI: Agora recebemos apenas "props" genéricas, e o VS Code para de reclamar!
+export function toast(props) {
   const id = Math.random().toString(36).substring(2, 9)
   
   const newToast = {
     id,
-    title,
-    description,
-    variant,
-    action,
     ...props,
   }
 
@@ -31,8 +28,8 @@ export function toast({ title, description, variant, action, ...props }) {
   return {
     id,
     dismiss: () => dismiss(id),
-    update: (props) => {
-      memoryState = memoryState.map((t) => (t.id === id ? { ...t, ...props } : t))
+    update: (newProps) => {
+      memoryState = memoryState.map((t) => (t.id === id ? { ...t, ...newProps } : t))
       notifyListeners()
     },
   }
