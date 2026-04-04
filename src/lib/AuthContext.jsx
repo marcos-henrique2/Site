@@ -1,32 +1,49 @@
-import React, { createContext, useState, useContext } from 'react';
+import React, { createContext, useState, useContext, useEffect } from 'react';
+import { apiClient } from '@/api/base44Client';
 
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
-  // Verifica se você já logou antes
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    return localStorage.getItem('mallki_admin_logged') === 'true';
-  });
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoadingAuth, setIsLoadingAuth] = useState(true); // Controla a tela de carregamento
 
-  // Função de login com uma senha de teste
-  const login = (email, password) => {
-    // Por enquanto, a senha está aqui no código. 
-    // Quando formos para o banco de dados real, isso será verificado na nuvem!
-    if (email === 'admin@mallkiprint.com' && password === 'mallki123') {
+  // Quando o site liga, ele verifica no Supabase se você já estava logado antes
+  useEffect(() => {
+    const verifySession = async () => {
+      try {
+        const session = await apiClient.auth.getSession();
+        setIsAuthenticated(!!session);
+      } catch (error) {
+        setIsAuthenticated(false);
+      } finally {
+        setIsLoadingAuth(false);
+      }
+    };
+    verifySession();
+  }, []);
+
+  const login = async (email, password) => {
+    try {
+      await apiClient.auth.login(email, password);
       setIsAuthenticated(true);
-      localStorage.setItem('mallki_admin_logged', 'true');
-      return true;
+      return { success: true };
+    } catch (error) {
+      console.error("Erro no login:", error);
+      return { success: false, error: error.message };
     }
-    return false;
   };
 
-  const logout = () => {
-    setIsAuthenticated(false);
-    localStorage.removeItem('mallki_admin_logged');
+  const logout = async () => {
+    try {
+      await apiClient.auth.logout();
+      setIsAuthenticated(false);
+    } catch (error) {
+      console.error("Erro ao sair:", error);
+    }
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, login, logout }}>
+    <AuthContext.Provider value={{ isAuthenticated, isLoadingAuth, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

@@ -66,6 +66,25 @@ export const apiClient = {
       if (error) throw error;
     }
   },
+  auth: {
+    login: async (email, password) => {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email,
+        password: password,
+      });
+      if (error) throw error;
+      return data;
+    },
+    logout: async () => {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+    },
+    getSession: async () => {
+      const { data, error } = await supabase.auth.getSession();
+      if (error) throw error;
+      return data.session;
+    }
+  },
 
   // Nova função poderosa: Salvar fotos no Storage do Supabase!
   uploadImage: async (file) => {

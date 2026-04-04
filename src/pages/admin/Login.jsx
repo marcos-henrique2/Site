@@ -10,16 +10,22 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [isLoggingIn, setIsLoggingIn] = useState(false); // Novo estado de carregamento
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    const success = login(email, password);
-    if (success) {
+    setIsLoggingIn(true);
+    setError('');
+
+    const response = await login(email, password);
+    
+    if (response.success) {
       navigate('/admin');
     } else {
       setError('E-mail ou senha incorretos.');
+      setIsLoggingIn(false);
     }
   };
 
@@ -41,7 +47,7 @@ export default function Login() {
               type="email" 
               value={email} 
               onChange={(e) => setEmail(e.target.value)} 
-              placeholder="admin@mallkiprint.com"
+              placeholder="seu@email.com"
               required 
             />
           </div>
@@ -58,8 +64,8 @@ export default function Login() {
 
           {error && <p className="text-sm text-red-500 font-medium">{error}</p>}
 
-          <Button type="submit" className="w-full bg-primary text-primary-foreground hover:bg-primary/90 mt-2">
-            Entrar no Painel
+          <Button type="submit" className="w-full bg-primary text-primary-foreground hover:bg-primary/90 mt-2" disabled={isLoggingIn}>
+            {isLoggingIn ? 'Entrando...' : 'Entrar no Painel'}
           </Button>
         </form>
       </div>
