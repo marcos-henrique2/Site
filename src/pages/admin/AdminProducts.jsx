@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/components/ui/use-toast';
 
-const MATERIALS = ['PLA', 'ABS', 'PETG', 'TPU', 'Resina', 'Nylon', 'Outro'];
+const MATERIALS = ['PLA', 'PETG', 'Outro'];
 
 const emptyProduct = {
   name: '', slug: '', description: '', short_description: '', price: '', compare_price: '',

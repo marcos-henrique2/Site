@@ -29,7 +29,7 @@ export default function Navbar() {
               <Printer className="w-5 h-5 text-primary" />
             </div>
             <span className="font-space font-bold text-lg tracking-tight">
-              Print<span className="text-primary">3D</span>
+              Mallki<span className="text-primary">Print</span>
             </span>
           </Link>
 

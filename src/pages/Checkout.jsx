@@ -54,7 +54,7 @@ export default function Checkout() {
       await apiClient.orders.create(novoPedido);
 
       // 2. Cria a mensagem formatada para o WhatsApp
-      const numeroVendedor = "5562982262543"; // <-- COLOQUE AQUI O SEU NÚMERO
+     const numeroVendedor = "5562992882262" // <-- COLOQUE AQUI O SEU NÚMERO
       
       let mensagemWhatsapp = `*Novo Pedido - Mallki Print* 🚀\n\n`;
       mensagemWhatsapp += `*Cliente:* ${form.name}\n`;

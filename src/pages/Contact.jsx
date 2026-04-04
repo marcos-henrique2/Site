@@ -1,104 +1,93 @@
-import React, { useState } from 'react';
-import { Mail, Phone, MapPin, MessageCircle, Send } from 'lucide-react';
+import React from 'react';
+import { Mail, Phone, MapPin, Clock, Instagram, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent } from '@/components/ui/card';
-import { useToast } from '@/components/ui/use-toast';
-
-// Informações de contato ajustadas para você preencher com os dados da sua loja
-const contactInfo = [
-  { icon: Mail, label: 'E-mail', value: 'contato@sualoja.com.br' },
-  { icon: Phone, label: 'Telefone', value: '(11) 99999-9999' },
-  { icon: MapPin, label: 'Localização', value: 'Sua Cidade, Estado' },
-];
+import { Label } from '@/components/ui/label';
 
 export default function Contact() {
-  const { toast } = useToast();
-  const [form, setForm] = useState({ name: '', email: '', message: '' });
-  const [sending, setSending] = useState(false);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!form.name || !form.email || !form.message) return;
-    
-    setSending(true);
-
-    try {
-      // Simulando o tempo de envio de um e-mail para manter a animação do botão
-      await new Promise(resolve => setTimeout(resolve, 1500));
-
-      /* Para enviar de verdade e de graça no futuro, você usaria algo assim:
-      await fetch('URL_DO_SEU_FORMSPREE_OU_BACKEND', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form)
-      });
-      */
-
-      toast({ title: 'Mensagem enviada!', description: 'Entraremos em contato em breve.' });
-      setForm({ name: '', email: '', message: '' });
-    } catch (error) {
-      toast({ title: 'Erro ao enviar', description: 'Tente novamente.', variant: 'destructive' });
-    } finally {
-      setSending(false);
-    }
-  };
-
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-16">
-      <div className="text-center mb-12">
-        <h1 className="text-3xl font-bold font-space">Entre em Contato</h1>
-        <p className="text-muted-foreground mt-2">Dúvidas, orçamentos ou encomendas personalizadas</p>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-20">
+      <div className="text-center max-w-2xl mx-auto mb-16">
+        <h1 className="text-4xl font-bold font-space mb-4">Fale Conosco</h1>
+        <p className="text-lg text-muted-foreground">
+          Tem alguma dúvida, precisa de um orçamento para um projeto especial em 3D ou quer saber o status do seu pedido? Estamos prontos para ajudar!
+        </p>
       </div>
 
-      <div className="grid md:grid-cols-3 gap-6 mb-12">
-        {contactInfo.map((item, i) => (
-          <Card key={i} className="text-center">
-            <CardContent className="pt-6">
-              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mx-auto mb-3">
-                <item.icon className="w-5 h-5 text-primary" />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
+        {/* Lado Esquerdo: Informações de Contato */}
+        <div className="bg-card rounded-2xl border border-border p-8 md:p-10 shadow-sm">
+          <h2 className="text-2xl font-semibold mb-6">Nossos Canais</h2>
+          <div className="space-y-8">
+            
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                <Phone className="w-6 h-6 text-primary" />
               </div>
-              <p className="text-sm text-muted-foreground">{item.label}</p>
-              <p className="font-medium mt-1">{item.value}</p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+              <div>
+                <h3 className="font-medium text-lg">WhatsApp / Telefone</h3>
+                <p className="text-muted-foreground mt-1">Fale diretamente com o Marcos para atendimento rápido.</p>
+                <a href="https://wa.me/5562992882262" target="_blank" rel="noopener noreferrer" className="inline-block mt-2 font-medium text-primary hover:underline">
+                  (62) 99288-2262
+                </a>
+              </div>
+            </div>
 
-      <Card className="max-w-xl mx-auto">
-        <CardContent className="pt-6">
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <Label>Nome</Label>
-              <Input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} required />
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                <Mail className="w-6 h-6 text-primary" />
+              </div>
+              <div>
+                <h3 className="font-medium text-lg">E-mail</h3>
+                <p className="text-muted-foreground mt-1">Para orçamentos detalhados e envio de arquivos STL.</p>
+                <a href="mailto:mallkiprint@gmail.com" className="inline-block mt-2 font-medium text-primary hover:underline">
+                  mallkiprint@gmail.com
+                </a>
+              </div>
             </div>
-            <div>
-              <Label>E-mail</Label>
-              <Input type="email" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} required />
+
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                <MapPin className="w-6 h-6 text-primary" />
+              </div>
+              <div>
+                <h3 className="font-medium text-lg">Localização</h3>
+                <p className="text-muted-foreground mt-1">Goiânia, Goiás</p>
+                <p className="text-muted-foreground">Enviamos para todo o Brasil!</p>
+              </div>
             </div>
-            <div>
-              <Label>Mensagem</Label>
-              <Textarea value={form.message} onChange={e => setForm(p => ({ ...p, message: e.target.value }))} rows={5} required />
+
+          </div>
+        </div>
+
+        {/* Lado Direito: Formulário de Mensagem */}
+        <div className="bg-card rounded-2xl border border-border p-8 md:p-10 shadow-sm">
+          <h2 className="text-2xl font-semibold mb-6">Envie uma Mensagem</h2>
+          <form className="space-y-6" onSubmit={(e) => { e.preventDefault(); window.open(`https://wa.me/5562992882262?text=Olá,%20gostaria%20de%20tirar%20uma%20dúvida!`, '_blank'); }}>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="name">Seu Nome</Label>
+                <Input id="name" placeholder="Ex: João Silva" required />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="email">Seu E-mail</Label>
+                <Input id="email" type="email" placeholder="Ex: joao@email.com" required />
+              </div>
             </div>
-            <Button type="submit" className="w-full bg-primary text-primary-foreground hover:bg-primary/90" disabled={sending}>
-              <Send className="w-4 h-4 mr-2" /> {sending ? 'Enviando...' : 'Enviar Mensagem'}
+
+            <div className="space-y-2">
+              <Label htmlFor="message">Mensagem</Label>
+              <Textarea id="message" placeholder="Como podemos ajudar?" rows={5} required />
+            </div>
+
+            <Button type="submit" className="w-full bg-primary text-primary-foreground hover:bg-primary/90" size="lg">
+              Chamar no WhatsApp <Send className="w-4 h-4 ml-2" />
             </Button>
+            
           </form>
-        </CardContent>
-      </Card>
-
-      <div className="text-center mt-10">
-        <a
-          href="https://wa.me/5511999999999"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors font-medium"
-        >
-          <MessageCircle className="w-5 h-5" />
-          Chamar no WhatsApp
-        </a>
+        </div>
       </div>
     </div>
   );
