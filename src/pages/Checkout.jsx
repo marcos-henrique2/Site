@@ -9,7 +9,7 @@ import { Separator } from '@/components/ui/separator';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useCart } from '@/contexts/CartContext';
 import { useToast } from '@/components/ui/use-toast';
-import { apiClient } from '@/api/base44Client'; // IMPORTANTE: Importamos o motor aqui!
+import { apiClient } from '@/api/base44Client';
 
 const paymentMethods = [
   { value: 'cartao', label: 'Mercado Pago', icon: CreditCard, desc: 'Cartão, boleto ou Pix via MP' },
@@ -27,8 +27,17 @@ export default function Checkout() {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
 
+  /**
+   * Função para atualizar os dados do formulário
+   * @param {string} field 
+   * @param {any} value 
+   */
   const handleChange = (field, value) => setForm(prev => ({ ...prev, [field]: value }));
 
+  /**
+   * Função para submeter o pedido
+   * @param {React.FormEvent} e 
+   */
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.name || !form.email || items.length === 0) return;
@@ -36,11 +45,11 @@ export default function Checkout() {
     setSubmitting(true);
 
     try {
-      // 1. Guarda o pedido no Supabase para aparecer no seu Painel de Admin!
+      // 1. Guarda o pedido no Supabase
       const novoPedido = {
         status: 'Pendente',
         total: subtotal,
-        items: items, // O Supabase aceita a lista de itens diretamente
+        items: items,
         customer: {
           name: form.name,
           email: form.email,
@@ -54,7 +63,7 @@ export default function Checkout() {
       await apiClient.orders.create(novoPedido);
 
       // 2. Cria a mensagem formatada para o WhatsApp
-     const numeroVendedor = "5562992882262" // <-- COLOQUE AQUI O SEU NÚMERO
+      const numeroVendedor = "5562992882262";
       
       let mensagemWhatsapp = `*Novo Pedido - Mallki Print* 🚀\n\n`;
       mensagemWhatsapp += `*Cliente:* ${form.name}\n`;
@@ -76,7 +85,7 @@ export default function Checkout() {
       // 3. Transforma a mensagem num formato que o navegador entende
       const mensagemCodificada = encodeURIComponent(mensagemWhatsapp);
       
-      // 4. Limpa o carrinho e mostra o ecrã de sucesso
+      // 4. Limpa o carrinho e mostra a tela de sucesso
       clearCart();
       setSuccess(true);
       
@@ -85,7 +94,7 @@ export default function Checkout() {
       
     } catch (error) {
        console.error("Erro ao guardar pedido:", error);
-       toast({ title: 'Erro ao processar', description: 'Ocorreu um erro ao comunicar com a base de dados.', variant: 'destructive' });
+       toast({ title: 'Erro ao processar', description: 'Ocorreu um erro ao comunicar com o banco de dados.', variant: 'destructive' });
     } finally {
       setSubmitting(false);
     }
@@ -97,8 +106,8 @@ export default function Checkout() {
         <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-6">
           <CheckCircle className="w-8 h-8 text-green-600" />
         </div>
-        <h2 className="text-2xl font-bold font-space">Pedido Registado com Sucesso!</h2>
-        <p className="text-muted-foreground mt-2">O seu pedido foi guardado e está a ser reencaminhado para o nosso WhatsApp para finalizarmos os detalhes.</p>
+        <h2 className="text-2xl font-bold font-space">Pedido Registrado com Sucesso!</h2>
+        <p className="text-muted-foreground mt-2">O seu pedido foi salvo e você está sendo redirecionado para o nosso WhatsApp para finalizarmos os detalhes.</p>
         <Link to="/">
           <Button className="mt-6 bg-primary text-primary-foreground hover:bg-primary/90">Voltar ao Início</Button>
         </Link>
@@ -176,7 +185,7 @@ export default function Checkout() {
         <div><Label>Observações</Label><Textarea value={form.notes} onChange={e => handleChange('notes', e.target.value)} rows={2} placeholder="Informações adicionais da sua impressão..." /></div>
 
         <Button type="submit" size="lg" className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-semibold" disabled={submitting}>
-          {submitting ? 'A Processar...' : 'Confirmar Pedido (Abrir WhatsApp)'}
+          {submitting ? 'Processando...' : 'Confirmar Pedido (Abrir WhatsApp)'}
         </Button>
       </form>
     </div>

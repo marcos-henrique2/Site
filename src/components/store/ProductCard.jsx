@@ -6,6 +6,10 @@ import { Badge } from '@/components/ui/badge';
 import { useCart } from '@/contexts/CartContext';
 import { motion } from 'framer-motion';
 
+/**
+ * @param {Object} props
+ * @param {any} props.product
+ */
 export default function ProductCard({ product }) {
   const { addItem } = useCart();
   const outOfStock = (product.stock_quantity || 0) <= 0;

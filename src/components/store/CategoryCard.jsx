@@ -3,6 +3,11 @@ import { Link } from 'react-router-dom';
 import { ArrowRight, FolderOpen } from 'lucide-react';
 import { motion } from 'framer-motion';
 
+/**
+ * @param {Object} props
+ * @param {any} props.category
+ * @param {number} [props.index]
+ */
 export default function CategoryCard({ category, index = 0 }) {
   return (
     <motion.div
