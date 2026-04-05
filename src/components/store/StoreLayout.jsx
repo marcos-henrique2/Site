@@ -2,15 +2,19 @@ import React from 'react';
 import { Outlet } from 'react-router-dom';
 import Navbar from './Navbar';
 import Footer from './Footer';
+import WhatsAppButton from './WhatsAppButton';
+import PromoBanner from './PromoBanner';
 
 export default function StoreLayout() {
   return (
     <div className="min-h-screen flex flex-col">
+      <PromoBanner />
       <Navbar />
       <main className="flex-1">
         <Outlet />
       </main>
       <Footer />
+      <WhatsAppButton />
     </div>
   );
 }
