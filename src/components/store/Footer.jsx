@@ -40,12 +40,14 @@ export default function Footer() {
               <li className="flex items-center gap-2 text-muted-foreground">
                 <MapPin className="w-4 h-4 text-primary" /> Goiânia, GO - Envios para todo o Brasil
               </li>
+              {/* O Instagram agora faz parte da mesma lista, com link e texto alinhados! */}
+              <li className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors">
+                <Instagram className="w-4 h-4 text-primary" />
+                <a href="https://instagram.com/mallkiprint" target="_blank" rel="noopener noreferrer">
+                  @mallkiprint
+                </a>
+              </li>
             </ul>
-            <div className="flex gap-4 mt-6">
-              <a href="#" className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary hover:bg-primary hover:text-primary-foreground transition-colors">
-                <Instagram className="w-4 h-4" />
-              </a>
-            </div>
           </div>
 
         </div>
