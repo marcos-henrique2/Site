@@ -2,13 +2,13 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/api/base44Client';
 import { format } from 'date-fns';
-import { Eye, Package } from 'lucide-react';
+import { Eye, Package, Trash2 } from 'lucide-react'; // <-- Adicionado o Trash2
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/components/ui/use-toast';
@@ -27,20 +27,29 @@ export default function AdminOrders() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [selected, setSelected] = useState(null);
+  const [deleteConfirm, setDeleteConfirm] = useState(null); // <-- Estado para confirmar exclusão
   const [filter, setFilter] = useState('all');
 
   const { data: orders = [], isLoading } = useQuery({
     queryKey: ['admin-orders'],
-    // Substituído base44.entities.Order.list pelo nosso apiClient
     queryFn: () => apiClient.orders.getAll(),
   });
 
   const updateMutation = useMutation({
-    // Adicionamos esta anotação para o editor saber que recebemos um objeto com id e data
     mutationFn: (/** @type {{ id: string|number, data: any }} */ { id, data }) => apiClient.orders.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
       toast({ title: 'Pedido atualizado!' });
+    },
+  });
+
+  // <-- Nova função para deletar pedidos
+  const deleteMutation = useMutation({
+    mutationFn: (/** @type {string|number} */ id) => apiClient.orders.delete(id), // Nota: certifique-se que o base44Client tem a função delete no orders
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
+      toast({ title: 'Pedido excluído com sucesso!' });
+      setDeleteConfirm(null);
     },
   });
 
@@ -67,27 +76,34 @@ export default function AdminOrders() {
               <TableHead className="hidden md:table-cell">Data</TableHead>
               <TableHead>Total</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead className="w-16">Ações</TableHead>
+              <TableHead className="w-24">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filtered.map(o => (
-              <TableRow key={o.id} className="cursor-pointer" onClick={() => setSelected(o)}>
-                <TableCell>
+              <TableRow key={o.id} className="cursor-pointer">
+                <TableCell onClick={() => setSelected(o)}>
                   <p className="font-medium text-sm">{o.customer_name}</p>
                   <p className="text-xs text-muted-foreground">{o.customer_email}</p>
                 </TableCell>
-                <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
+                <TableCell className="hidden md:table-cell text-sm text-muted-foreground" onClick={() => setSelected(o)}>
                   {o.created_date ? format(new Date(o.created_date), 'dd/MM/yyyy HH:mm') : '—'}
                 </TableCell>
-                <TableCell className="font-bold text-sm font-space">R$ {o.total?.toFixed(2)}</TableCell>
-                <TableCell>
+                <TableCell className="font-bold text-sm font-space" onClick={() => setSelected(o)}>R$ {o.total?.toFixed(2)}</TableCell>
+                <TableCell onClick={() => setSelected(o)}>
                   <Badge className={`text-xs ${statusColors[o.status] || ''}`}>
                     {statusLabels[o.status] || o.status}
                   </Badge>
                 </TableCell>
                 <TableCell>
-                  <Button variant="ghost" size="icon" className="h-8 w-8"><Eye className="w-4 h-4" /></Button>
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelected(o)}>
+                      <Eye className="w-4 h-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={(e) => { e.stopPropagation(); setDeleteConfirm(o); }}>
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
@@ -98,6 +114,7 @@ export default function AdminOrders() {
         </Table>
       </div>
 
+      {/* Modal de Ver Detalhes do Pedido */}
       <Dialog open={!!selected} onOpenChange={(v) => { if (!v) setSelected(null); }}>
         {selected && (
           <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
@@ -159,7 +176,6 @@ export default function AdminOrders() {
                   <Button
                     variant="outline"
                     onClick={() => {
-                      // O comentário abaixo ensina ao editor que o elemento é um Input
                       const code = /** @type {HTMLInputElement} */ (document.getElementById('tracking')).value;
                       updateMutation.mutate({ id: selected.id, data: { tracking_code: code } });
                     }}
@@ -175,6 +191,24 @@ export default function AdminOrders() {
             </div>
           </DialogContent>
         )}
+      </Dialog>
+
+      {/* Modal de Confirmação de Exclusão */}
+      <Dialog open={!!deleteConfirm} onOpenChange={(v) => { if (!v) setDeleteConfirm(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Excluir Pedido?</DialogTitle>
+            <DialogDescription>
+              Tem certeza que deseja apagar o pedido de <strong>{deleteConfirm?.customer_name}</strong> permanentemente? Esta ação removerá o valor do seu painel e não pode ser desfeita.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => setDeleteConfirm(null)}>Cancelar</Button>
+            <Button variant="destructive" onClick={() => deleteMutation.mutate(deleteConfirm.id)} disabled={deleteMutation.isPending}>
+              {deleteMutation.isPending ? 'Excluindo...' : 'Sim, excluir pedido'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
       </Dialog>
     </div>
   );
