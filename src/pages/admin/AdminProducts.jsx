@@ -74,22 +74,39 @@ export default function AdminProducts() {
     queryKey: ['admin-categories'],
     queryFn: () => apiClient.categories.getAll(),
   });
-
-  // ── MUTATIONS ────────────────────────────────────────────────────────────────
+  
+// MUTATIONS
   const saveMutation = useMutation({
     mutationFn: async (/** @type {any} */ data) => {
+      // Aqui nós montamos o pacote APENAS com colunas oficiais do banco de dados!
       const payload = {
-        ...data,
+        name: data.name,
+        slug: data.slug,
+        description: data.description,
+        short_description: data.short_description,
         price: parseFloat(data.price) || 0,
         compare_price: parseFloat(data.compare_price) || 0,
+        material: data.material,
+        weight: data.weight,
         stock_quantity: parseInt(data.stock_quantity) || 0,
+        is_active: data.is_active,
+        is_featured: data.is_featured,
+        print_time: data.print_time,
+        infill: data.infill,
+        images: data.images || [],
+        tags: data.tags || [],
+        
+        // As suas traduções:
         color: data.colors && data.colors.length > 0 ? data.colors.join(', ') : '',
-        // Serialise size_variants as JSON string for storage
-        size_variants: JSON.stringify(data.size_variants || []),
+        
+        // Se você criou size_variants como JSONB no Supabase, mandamos direto:
+        size_variants: data.size_variants || []
       };
 
-      delete payload.colors;
-      if (!payload.category_id) delete payload.category_id;
+      // REGRA DE OURO: Se a categoria estiver vazia (""), apaga para não dar erro de UUID inválido
+      if (data.category_id) {
+        payload.category_id = data.category_id;
+      }
 
       if (editing) return apiClient.products.update(editing.id, payload);
       return apiClient.products.create(payload);
@@ -99,23 +116,45 @@ export default function AdminProducts() {
       toast({ title: editing ? 'Produto atualizado!' : 'Produto criado!' });
       closeDialog();
     },
+    onError: (/** @type {any} */ err) => {
+      const msg = err?.message || JSON.stringify(err);
+      console.error('Erro ao salvar produto:', err);
+      toast({ title: 'Erro ao salvar produto', description: msg, variant: 'destructive' });
+    },
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (/** @type {string|number} */ id) => apiClient.products.delete(id),
+    mutationFn: (/** @type {string} */ id) => apiClient.products.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-products'] });
       toast({ title: 'Produto excluído!' });
     },
+    onError: () => {
+      toast({ title: 'Erro ao excluir produto', variant: 'destructive' });
+    },
   });
 
   const importCsvMutation = useMutation({
-    mutationFn: async (/** @type {any[]} */ rows) => {
-      for (const row of rows) await apiClient.products.create(row);
+    mutationFn: async (/** @type {any[]} */ newProducts) => {
+      for (const product of newProducts) {
+        await apiClient.products.create({
+          ...product,
+          price: parseFloat(product.price) || 0,
+          stock_quantity: parseInt(product.stock_quantity) || 0,
+          is_active: true,
+          is_featured: false,
+          images: [],
+          tags: [],
+          size_variants: [],
+        });
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-products'] });
       toast({ title: 'Produtos importados com sucesso!' });
+    },
+    onError: () => {
+      toast({ title: 'Erro ao importar CSV', variant: 'destructive' });
     },
   });
 
