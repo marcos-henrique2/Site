@@ -1,8 +1,5 @@
 import { supabase } from '@/lib/supabase';
 
-// Gerador de IDs (vamos manter o mesmo padrão para não quebrar nada)
-const generateId = () => Math.random().toString(36).substr(2, 9);
-
 export const apiClient = {
   categories: {
     getAll: async () => {
@@ -11,10 +8,10 @@ export const apiClient = {
       return data || [];
     },
     create: async (data) => {
-      const newItem = { ...data, id: generateId() };
-      const { error } = await supabase.from('categories').insert([newItem]);
+      // Enviamos apenas os dados do formulário, o Supabase gera o ID automático!
+      const { error } = await supabase.from('categories').insert([data]);
       if (error) throw error;
-      return newItem;
+      return data;
     },
     update: async (id, data) => {
       const { error } = await supabase.from('categories').update(data).eq('id', id);
@@ -33,10 +30,10 @@ export const apiClient = {
       return data || [];
     },
     create: async (data) => {
-      const newItem = { ...data, id: generateId(), created_date: new Date().toISOString() };
-      const { error } = await supabase.from('products').insert([newItem]);
+      // AQUI ESTAVA O ERRO! Removemos o generateId() e o created_date.
+      const { error } = await supabase.from('products').insert([data]);
       if (error) throw error;
-      return newItem;
+      return data;
     },
     update: async (id, data) => {
       const { error } = await supabase.from('products').update(data).eq('id', id);
@@ -49,23 +46,25 @@ export const apiClient = {
   },
 
   orders: {
+    // Caso a sua tabela use created_at (padrão do supabase), trocamos no order também.
+    // Se a sua tabela DE FATO se chamar 'created_date', mude a linha abaixo para 'created_date'
     getAll: async () => {
-      const { data, error } = await supabase.from('orders').select('*').order('created_date', { ascending: false });
+      const { data, error } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
       if (error) throw error;
       return data || [];
     },
-    // Nova função adicionada:
     create: async (data) => {
-      const newItem = { ...data, id: generateId(), created_date: new Date().toISOString() };
-      const { error } = await supabase.from('orders').insert([newItem]);
+      // Removemos a injeção manual de id e data
+      const { error } = await supabase.from('orders').insert([data]);
       if (error) throw error;
-      return newItem;
+      return data;
     },
     update: async (id, data) => {
       const { error } = await supabase.from('orders').update(data).eq('id', id);
       if (error) throw error;
     }
   },
+  
   auth: {
     login: async (email, password) => {
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -86,7 +85,6 @@ export const apiClient = {
     }
   },
 
-  // Nova função poderosa: Salvar fotos no Storage do Supabase!
   uploadImage: async (file) => {
     const fileExt = file.name.split('.').pop();
     const fileName = `${Math.random()}.${fileExt}`;
@@ -98,7 +96,6 @@ export const apiClient = {
 
     if (uploadError) throw uploadError;
 
-    // Pega o link público da imagem para mostrar na loja
     const { data } = supabase.storage.from('produtos').getPublicUrl(filePath);
     return data.publicUrl;
   }

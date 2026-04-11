@@ -78,7 +78,6 @@ export default function AdminProducts() {
 // MUTATIONS
   const saveMutation = useMutation({
     mutationFn: async (/** @type {any} */ data) => {
-      // Aqui nós montamos o pacote APENAS com colunas oficiais do banco de dados!
       const payload = {
         name: data.name,
         slug: data.slug,
@@ -95,20 +94,22 @@ export default function AdminProducts() {
         infill: data.infill,
         images: data.images || [],
         tags: data.tags || [],
-        
-        // As suas traduções:
         color: data.colors && data.colors.length > 0 ? data.colors.join(', ') : '',
-        
-        // Se você criou size_variants como JSONB no Supabase, mandamos direto:
-        size_variants: data.size_variants || []
+        size_variants: data.size_variants || [],
       };
 
-      // REGRA DE OURO: Se a categoria estiver vazia (""), apaga para não dar erro de UUID inválido
+      // Se a categoria estiver vazia (""), não envia para não dar erro de UUID inválido
       if (data.category_id) {
         payload.category_id = data.category_id;
       }
 
-      if (editing) return apiClient.products.update(editing.id, payload);
+      if (editing) {
+        return apiClient.products.update(editing.id, payload);
+      }
+
+      // Gera UUID localmente para evitar erro de "null value in column id"
+      // caso a tabela não tenha DEFAULT configurado no Supabase
+      payload.id = crypto.randomUUID();
       return apiClient.products.create(payload);
     },
     onSuccess: () => {
