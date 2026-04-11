@@ -16,6 +16,8 @@ import { useToast } from '@/components/ui/use-toast';
 const MATERIALS = ['PLA', 'PETG', 'Outro'];
 
 /**
+ * @typedef {{ size: string, price: number }} SizeVariant
+ *
  * @typedef {Object} ProductForm
  * @property {string} [id]
  * @property {string} name
@@ -27,7 +29,6 @@ const MATERIALS = ['PLA', 'PETG', 'Outro'];
  * @property {string} category_id
  * @property {string} material
  * @property {string[]} colors
- * @property {string[]} sizes
  * @property {string} weight
  * @property {number} stock_quantity
  * @property {boolean} is_active
@@ -36,28 +37,32 @@ const MATERIALS = ['PLA', 'PETG', 'Outro'];
  * @property {string} infill
  * @property {string[]} images
  * @property {string[]} tags
+ * @property {SizeVariant[]} size_variants
  */
 
 /** @type {ProductForm} */
 const emptyProduct = {
   name: '', slug: '', description: '', short_description: '', price: '', compare_price: '',
-  category_id: '', material: '', colors: [], sizes: [], weight: '',
-  stock_quantity: 0, is_active: true, is_featured: false, print_time: '', infill: '', images: [], tags: [],
+  category_id: '', material: '', colors: [], weight: '',
+  stock_quantity: 0, is_active: true, is_featured: false, print_time: '', infill: '',
+  images: [], tags: [],
+  size_variants: [],
 };
 
 export default function AdminProducts() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const csvInputRef = useRef(null);
-  
+
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(/** @type {ProductForm} */ (emptyProduct));
-  
-  // Inputs temporários para as tags
+
   const [tagInput, setTagInput] = useState('');
   const [colorInput, setColorInput] = useState('');
+  // Size variant inputs
   const [sizeInput, setSizeInput] = useState('');
+  const [sizePriceInput, setSizePriceInput] = useState('');
   const [isUploading, setIsUploading] = useState(false);
 
   const { data: products = [], isLoading } = useQuery({
@@ -70,28 +75,21 @@ export default function AdminProducts() {
     queryFn: () => apiClient.categories.getAll(),
   });
 
-  // MUTATIONS
+  // ── MUTATIONS ────────────────────────────────────────────────────────────────
   const saveMutation = useMutation({
     mutationFn: async (/** @type {any} */ data) => {
-      // 1. Criamos a tradução dos dados
-      const payload = { 
-        ...data, 
-        price: parseFloat(data.price) || 0, 
-        compare_price: parseFloat(data.compare_price) || 0, 
+      const payload = {
+        ...data,
+        price: parseFloat(data.price) || 0,
+        compare_price: parseFloat(data.compare_price) || 0,
         stock_quantity: parseInt(data.stock_quantity) || 0,
-        // Traduz as listas visuais para textos com vírgula para o banco aceitar
         color: data.colors && data.colors.length > 0 ? data.colors.join(', ') : '',
-        dimensions: data.sizes && data.sizes.length > 0 ? data.sizes.join(', ') : ''
+        // Serialise size_variants as JSON string for storage
+        size_variants: JSON.stringify(data.size_variants || []),
       };
 
-      // 2. Apagamos as listas visuais antes de enviar para o banco não dar o Erro 400
       delete payload.colors;
-      delete payload.sizes;
-
-      // 3. Segurança extra: se a categoria não for escolhida, não envia vazio para não quebrar
-      if (!payload.category_id) {
-        delete payload.category_id;
-      }
+      if (!payload.category_id) delete payload.category_id;
 
       if (editing) return apiClient.products.update(editing.id, payload);
       return apiClient.products.create(payload);
@@ -113,30 +111,34 @@ export default function AdminProducts() {
 
   const importCsvMutation = useMutation({
     mutationFn: async (/** @type {any[]} */ rows) => {
-      for (const row of rows) {
-        await apiClient.products.create(row);
-      }
+      for (const row of rows) await apiClient.products.create(row);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-products'] });
       toast({ title: 'Produtos importados com sucesso!' });
-    }
+    },
   });
 
-  // FUNÇÕES DE CONTROLE
+  // ── HELPERS ──────────────────────────────────────────────────────────────────
   const closeDialog = () => { setOpen(false); setEditing(null); setForm(emptyProduct); };
+
+  /** Parse stored size_variants — could be JSON string or already an array */
+  const parseSizeVariants = (raw) => {
+    if (!raw) return [];
+    if (Array.isArray(raw)) return raw;
+    try { return JSON.parse(raw); } catch { return []; }
+  };
 
   /** @param {any} product */
   const openEdit = (product) => {
     setEditing(product);
-    setForm({ 
-      ...emptyProduct, 
-      ...product, 
-      price: product.price?.toString() || '', 
+    setForm({
+      ...emptyProduct,
+      ...product,
+      price: product.price?.toString() || '',
       compare_price: product.compare_price?.toString() || '',
-      // Traduz os textos do banco de volta para as etiquetas (balõezinhos)
       colors: product.color ? product.color.split(',').map((/** @type {string} */ c) => c.trim()).filter(Boolean) : [],
-      sizes: product.dimensions ? product.dimensions.split(',').map((/** @type {string} */ s) => s.trim()).filter(Boolean) : []
+      size_variants: parseSizeVariants(product.size_variants),
     });
     setOpen(true);
   };
@@ -144,31 +146,30 @@ export default function AdminProducts() {
   /** @param {any} product */
   const duplicateProduct = (product) => {
     setEditing(null);
-    setForm({ 
-      ...emptyProduct, 
-      ...product, 
-      id: undefined, // Remove o ID para criar um novo
+    setForm({
+      ...emptyProduct,
+      ...product,
+      id: undefined,
       name: `${product.name} (Cópia)`,
       slug: `${product.slug}-copia`,
       price: product.price?.toString() || '',
-      // Traduz também na hora de duplicar
       colors: product.color ? product.color.split(',').map((/** @type {string} */ c) => c.trim()).filter(Boolean) : [],
-      sizes: product.dimensions ? product.dimensions.split(',').map((/** @type {string} */ s) => s.trim()).filter(Boolean) : []
+      size_variants: parseSizeVariants(product.size_variants),
     });
     setOpen(true);
   };
 
-  // UPLOAD E DRAG & DROP DE IMAGENS
+  // ── IMAGE UPLOAD ─────────────────────────────────────────────────────────────
   /** @param {any} e */
   const handleImageUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setIsUploading(true);
     try {
-      const imageUrl = await apiClient.uploadImage(file); 
+      const imageUrl = await apiClient.uploadImage(file);
       setForm(/** @type {any} */ (prev) => ({ ...prev, images: [...(prev.images || []), imageUrl] }));
       toast({ title: 'Foto adicionada!' });
-    } catch (error) {
+    } catch {
       toast({ title: 'Erro no upload', variant: 'destructive' });
     } finally {
       setIsUploading(false);
@@ -183,16 +184,15 @@ export default function AdminProducts() {
     e.preventDefault();
     const sourceIndex = Number(e.dataTransfer.getData('imgIdx'));
     if (sourceIndex === targetIndex) return;
-    
     setForm(/** @type {any} */ (prev) => {
       const newImages = [...prev.images];
-      const [movedImage] = newImages.splice(sourceIndex, 1);
-      newImages.splice(targetIndex, 0, movedImage);
+      const [moved] = newImages.splice(sourceIndex, 1);
+      newImages.splice(targetIndex, 0, moved);
       return { ...prev, images: newImages };
     });
   };
 
-  // ADICIONAR VARIAÇÕES (Tags, Cores, Tamanhos)
+  // ── TAGS / COLORS ─────────────────────────────────────────────────────────────
   const addToList = (field, value, setInputValue) => {
     if (value.trim() && !form[field]?.includes(value.trim())) {
       setForm(/** @type {any} */ (prev) => ({ ...prev, [field]: [...(prev[field] || []), value.trim()] }));
@@ -204,22 +204,40 @@ export default function AdminProducts() {
     setForm(/** @type {any} */ (prev) => ({ ...prev, [field]: prev[field].filter((_, i) => i !== idx) }));
   };
 
-  // IMPORTAÇÃO CSV SIMPLES
+  // ── SIZE VARIANTS ─────────────────────────────────────────────────────────────
+  const addSizeVariant = () => {
+    const size = sizeInput.trim();
+    const price = parseFloat(sizePriceInput);
+    if (!size || isNaN(price) || price < 0) return;
+    const already = form.size_variants?.some(sv => sv.size === size);
+    if (already) { toast({ title: 'Este tamanho já existe!' }); return; }
+    setForm(/** @type {any} */ (prev) => ({
+      ...prev,
+      size_variants: [...(prev.size_variants || []), { size, price }],
+    }));
+    setSizeInput('');
+    setSizePriceInput('');
+  };
+
+  const removeSizeVariant = (idx) => {
+    setForm(/** @type {any} */ (prev) => ({
+      ...prev,
+      size_variants: prev.size_variants.filter((_, i) => i !== idx),
+    }));
+  };
+
+  // ── CSV IMPORT ────────────────────────────────────────────────────────────────
   /** @param {any} e */
   const handleCSVImport = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
     const reader = new FileReader();
     reader.onload = async (evt) => {
       const text = evt.target?.result;
       if (typeof text !== 'string') return;
-      
       const rows = text.split('\n').filter(row => row.trim() !== '');
       const headers = rows.shift()?.split(',').map(h => h.trim());
-      
       if (!headers) return;
-
       const newProducts = rows.map(row => {
         const values = row.split(',').map(v => v.trim());
         const product = { ...emptyProduct };
@@ -230,13 +248,11 @@ export default function AdminProducts() {
             product[header] = values[index];
           }
         });
-        // Gera slug automático se não houver
         if (product.name && !product.slug) {
           product.slug = product.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
         }
         return product;
       });
-
       if (confirm(`Encontrados ${newProducts.length} produtos no CSV. Deseja importar?`)) {
         importCsvMutation.mutate(newProducts);
       }
@@ -247,19 +263,17 @@ export default function AdminProducts() {
 
   const getCategoryName = (/** @type {string} */ id) => categories.find((/** @type {any} */ c) => c.id === id)?.name || '—';
 
+  // ── RENDER ────────────────────────────────────────────────────────────────────
   return (
     <div>
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
         <h1 className="text-2xl font-bold font-space">Produtos</h1>
         <div className="flex gap-2 w-full sm:w-auto">
-          {/* Input invisível para o CSV */}
           <input type="file" accept=".csv" className="hidden" ref={csvInputRef} onChange={handleCSVImport} />
-          
           <Button variant="outline" onClick={() => csvInputRef.current?.click()} disabled={importCsvMutation.isPending} className="flex-1 sm:flex-none">
             <UploadCloud className="w-4 h-4 mr-2" />
             {importCsvMutation.isPending ? 'Importando...' : 'Importar CSV'}
           </Button>
-          
           <Button onClick={() => { setForm(emptyProduct); setEditing(null); setOpen(true); }} className="bg-primary text-primary-foreground hover:bg-primary/90 flex-1 sm:flex-none">
             <Plus className="w-4 h-4 mr-1" /> Novo
           </Button>
@@ -278,41 +292,54 @@ export default function AdminProducts() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {products.map((/** @type {any} */ p) => (
-              <TableRow key={p.id}>
-                <TableCell>
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-muted overflow-hidden shrink-0">
-                      {p.images?.[0] ? <img src={p.images[0]} alt="" className="w-full h-full object-cover" /> : <Package className="w-full h-full p-2 text-muted-foreground/30" />}
+            {products.map((/** @type {any} */ p) => {
+              const variants = parseSizeVariants(p.size_variants);
+              const minPrice = variants.length > 0
+                ? Math.min(...variants.map(v => v.price))
+                : p.price;
+              const maxPrice = variants.length > 0
+                ? Math.max(...variants.map(v => v.price))
+                : p.price;
+              const priceLabel = variants.length > 0 && minPrice !== maxPrice
+                ? `R$ ${minPrice.toFixed(2)} – R$ ${maxPrice.toFixed(2)}`
+                : `R$ ${(p.price || 0).toFixed(2)}`;
+
+              return (
+                <TableRow key={p.id}>
+                  <TableCell>
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-muted overflow-hidden shrink-0">
+                        {p.images?.[0] ? <img src={p.images[0]} alt="" className="w-full h-full object-cover" /> : <Package className="w-full h-full p-2 text-muted-foreground/30" />}
+                      </div>
+                      <div>
+                        <p className="font-medium text-sm line-clamp-1">{p.name}</p>
+                        <p className="text-xs text-muted-foreground">{p.material}{variants.length > 0 ? ` · ${variants.length} tamanho(s)` : ''}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-medium text-sm line-clamp-1">{p.name}</p>
-                      {p.material && <p className="text-xs text-muted-foreground">{p.material}</p>}
+                  </TableCell>
+                  <TableCell className="hidden md:table-cell text-sm">{getCategoryName(p.category_id)}</TableCell>
+                  <TableCell className="font-medium text-sm font-space">{priceLabel}</TableCell>
+                  <TableCell>
+                    <Badge variant={p.stock_quantity <= 3 ? 'destructive' : 'secondary'} className="text-xs">
+                      {p.stock_quantity || 0}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600 hover:text-blue-700" onClick={() => duplicateProduct(p)} title="Duplicar">
+                        <Copy className="w-3.5 h-3.5" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(p)} title="Editar">
+                        <Pencil className="w-3.5 h-3.5" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => { if (confirm('Excluir produto?')) deleteMutation.mutate(p.id); }} title="Excluir">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
                     </div>
-                  </div>
-                </TableCell>
-                <TableCell className="hidden md:table-cell text-sm">{getCategoryName(p.category_id)}</TableCell>
-                <TableCell className="font-medium text-sm font-space">R$ {p.price?.toFixed(2)}</TableCell>
-                <TableCell>
-                  <Badge variant={p.stock_quantity <= 3 ? 'destructive' : 'secondary'} className="text-xs">
-                    {p.stock_quantity || 0}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600 hover:text-blue-700" onClick={() => duplicateProduct(p)} title="Duplicar Produto">
-                      <Copy className="w-3.5 h-3.5" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(p)} title="Editar">
-                      <Pencil className="w-3.5 h-3.5" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => { if(confirm('Excluir produto?')) deleteMutation.mutate(p.id) }} title="Excluir">
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
             {!isLoading && products.length === 0 && (
               <TableRow><TableCell colSpan={5} className="text-center py-10 text-muted-foreground">Nenhum produto cadastrado.</TableCell></TableRow>
             )}
@@ -320,20 +347,30 @@ export default function AdminProducts() {
         </Table>
       </div>
 
+      {/* ── DIALOG ── */}
       <Dialog open={open} onOpenChange={(v) => { if (!v) closeDialog(); else setOpen(true); }}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="font-space text-xl">{editing ? 'Editar Produto' : 'Novo Produto'}</DialogTitle>
           </DialogHeader>
           <form onSubmit={(e) => { e.preventDefault(); saveMutation.mutate(form); }} className="space-y-6 mt-2">
-            
+
+            {/* Info básica */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div><Label>Nome *</Label><Input value={form.name} onChange={e => setForm(/** @type {any} */ (p) => ({ ...p, name: e.target.value, slug: e.target.value.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') }))} required /></div>
               <div><Label>Slug (Link)</Label><Input value={form.slug} onChange={e => setForm(/** @type {any} */ (p) => ({ ...p, slug: e.target.value }))} /></div>
-              
-              <div><Label>Preço de Venda (R$) *</Label><Input type="number" step="0.01" value={form.price} onChange={e => setForm(/** @type {any} */ (p) => ({ ...p, price: e.target.value }))} required /></div>
-              <div><Label>Preço Original (R$) <span className="text-muted-foreground text-xs">(Gera selo de desconto)</span></Label><Input type="number" step="0.01" value={form.compare_price} onChange={e => setForm(/** @type {any} */ (p) => ({ ...p, compare_price: e.target.value }))} /></div>
-              
+
+              <div>
+                <Label>
+                  Preço Base (R$) *
+                  {form.size_variants?.length > 0 && (
+                    <span className="ml-2 text-xs text-muted-foreground font-normal">usado quando nenhum tamanho é selecionado</span>
+                  )}
+                </Label>
+                <Input type="number" step="0.01" value={form.price} onChange={e => setForm(/** @type {any} */ (p) => ({ ...p, price: e.target.value }))} required />
+              </div>
+              <div><Label>Preço Original (R$) <span className="text-muted-foreground text-xs">(gera selo de desconto)</span></Label><Input type="number" step="0.01" value={form.compare_price} onChange={e => setForm(/** @type {any} */ (p) => ({ ...p, compare_price: e.target.value }))} /></div>
+
               <div>
                 <Label>Categoria *</Label>
                 <Select value={form.category_id} onValueChange={v => setForm(/** @type {any} */ (p) => ({ ...p, category_id: v }))}>
@@ -341,7 +378,7 @@ export default function AdminProducts() {
                   <SelectContent>{categories.map((/** @type {any} */ c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              
+
               <div>
                 <Label>Material Principal</Label>
                 <Select value={form.material} onValueChange={v => setForm(/** @type {any} */ (p) => ({ ...p, material: v }))}>
@@ -354,54 +391,95 @@ export default function AdminProducts() {
               <div><Label>Quantidade em Estoque</Label><Input type="number" value={form.stock_quantity} onChange={e => setForm(/** @type {any} */ (p) => ({ ...p, stock_quantity: Number(e.target.value) }))} /></div>
             </div>
 
-            <div className="bg-muted/30 p-4 rounded-xl border border-border space-y-4">
+            {/* Variações */}
+            <div className="bg-muted/30 p-4 rounded-xl border border-border space-y-5">
               <h3 className="font-semibold text-sm">Variações do Produto</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Opções de Cor */}
-                <div>
-                  <Label>Opções de Cor</Label>
-                  <div className="flex gap-2 mt-1">
-                    <Input value={colorInput} onChange={e => setColorInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addToList('colors', colorInput, setColorInput); } }} placeholder="Ex: Azul Metálico" />
-                    <Button type="button" variant="secondary" onClick={() => addToList('colors', colorInput, setColorInput)}>Add</Button>
-                  </div>
-                  <div className="flex flex-wrap gap-1 mt-2">
-                    {form.colors?.map((c, i) => (
-                      <Badge key={i} variant="outline" className="bg-background cursor-pointer hover:bg-destructive/10 hover:text-destructive" onClick={() => removeFromList('colors', i)}>{c} ×</Badge>
-                    ))}
-                  </div>
+
+              {/* Cores */}
+              <div>
+                <Label>Opções de Cor</Label>
+                <div className="flex gap-2 mt-1">
+                  <Input value={colorInput} onChange={e => setColorInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addToList('colors', colorInput, setColorInput); } }} placeholder="Ex: Azul Metálico" />
+                  <Button type="button" variant="secondary" onClick={() => addToList('colors', colorInput, setColorInput)}>Add</Button>
+                </div>
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {form.colors?.map((c, i) => (
+                    <Badge key={i} variant="outline" className="bg-background cursor-pointer hover:bg-destructive/10 hover:text-destructive" onClick={() => removeFromList('colors', i)}>{c} ×</Badge>
+                  ))}
+                </div>
+              </div>
+
+              {/* Tamanhos com Preço */}
+              <div className="border-t border-border pt-4">
+                <div className="mb-2">
+                  <Label>Tamanhos com Preço Individual</Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">Cada tamanho pode ter um valor diferente. O cliente escolhe na página do produto.</p>
                 </div>
 
-                {/* Opções de Tamanho */}
-                <div>
-                  <Label>Tamanhos / Dimensões</Label>
-                  <div className="flex gap-2 mt-1">
-                    <Input value={sizeInput} onChange={e => setSizeInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addToList('sizes', sizeInput, setSizeInput); } }} placeholder="Ex: 15cm" />
-                    <Button type="button" variant="secondary" onClick={() => addToList('sizes', sizeInput, setSizeInput)}>Add</Button>
+                <div className="flex gap-2 mt-2">
+                  <Input
+                    value={sizeInput}
+                    onChange={e => setSizeInput(e.target.value)}
+                    placeholder="Nome (ex: Pequeno, 10cm, P)"
+                    className="flex-1"
+                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addSizeVariant(); } }}
+                  />
+                  <div className="relative w-36">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
+                    <Input
+                      value={sizePriceInput}
+                      onChange={e => setSizePriceInput(e.target.value)}
+                      type="number"
+                      step="0.01"
+                      placeholder="0,00"
+                      className="pl-8"
+                      onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addSizeVariant(); } }}
+                    />
                   </div>
-                  <div className="flex flex-wrap gap-1 mt-2">
-                    {form.sizes?.map((s, i) => (
-                      <Badge key={i} variant="outline" className="bg-background cursor-pointer hover:bg-destructive/10 hover:text-destructive" onClick={() => removeFromList('sizes', i)}>{s} ×</Badge>
-                    ))}
-                  </div>
+                  <Button type="button" variant="secondary" onClick={addSizeVariant}>
+                    <Plus className="w-4 h-4" />
+                  </Button>
                 </div>
+
+                {form.size_variants?.length > 0 ? (
+                  <div className="mt-3 space-y-2">
+                    {form.size_variants.map((sv, i) => (
+                      <div key={i} className="flex items-center justify-between bg-background border border-border rounded-lg px-4 py-2.5">
+                        <div className="flex items-center gap-4">
+                          <span className="font-medium text-sm">{sv.size}</span>
+                          <span className="text-primary font-bold text-sm font-space">R$ {Number(sv.price).toFixed(2)}</span>
+                        </div>
+                        <button type="button" onClick={() => removeSizeVariant(i)} className="text-xs text-destructive hover:underline">
+                          Remover
+                        </button>
+                      </div>
+                    ))}
+                    <p className="text-xs text-muted-foreground pt-1">
+                      Faixa de preço: R$ {Math.min(...form.size_variants.map(sv => sv.price)).toFixed(2)} – R$ {Math.max(...form.size_variants.map(sv => sv.price)).toFixed(2)}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground mt-2 italic">Nenhum tamanho cadastrado — o produto usará o preço base único.</p>
+                )}
               </div>
             </div>
 
+            {/* Detalhes técnicos */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-               <div><Label>Tempo de Impressão (Apenas controle interno)</Label><Input value={form.print_time} onChange={e => setForm(/** @type {any} */ (p) => ({ ...p, print_time: e.target.value }))} placeholder="ex: 4 horas" /></div>
-               <div><Label>Preenchimento (Infill)</Label><Input value={form.infill} onChange={e => setForm(/** @type {any} */ (p) => ({ ...p, infill: e.target.value }))} placeholder="ex: 15% Giroide" /></div>
+              <div><Label>Tempo de Impressão</Label><Input value={form.print_time} onChange={e => setForm(/** @type {any} */ (p) => ({ ...p, print_time: e.target.value }))} placeholder="ex: 4 horas" /></div>
+              <div><Label>Preenchimento (Infill)</Label><Input value={form.infill} onChange={e => setForm(/** @type {any} */ (p) => ({ ...p, infill: e.target.value }))} placeholder="ex: 15% Giroide" /></div>
             </div>
 
             <div><Label>Descrição Curta (Aparece no card)</Label><Textarea value={form.short_description} onChange={e => setForm(/** @type {any} */ (p) => ({ ...p, short_description: e.target.value }))} rows={2} /></div>
             <div><Label>Descrição Completa</Label><Textarea value={form.description} onChange={e => setForm(/** @type {any} */ (p) => ({ ...p, description: e.target.value }))} rows={4} /></div>
 
-            {/* SEÇÃO DE IMAGENS COM DRAG & DROP */}
+            {/* Imagens */}
             <div className="bg-muted/30 p-4 rounded-xl border border-border">
               <Label className="mb-2 block">Imagens do Produto <span className="text-xs text-muted-foreground font-normal">(Arraste para reordenar)</span></Label>
               <div className="flex gap-3 flex-wrap">
                 {form.images?.map((img, i) => (
-                  <div 
-                    key={i} 
+                  <div
+                    key={i}
                     draggable
                     onDragStart={(e) => e.dataTransfer.setData('imgIdx', i.toString())}
                     onDragOver={(e) => e.preventDefault()}
@@ -417,7 +495,6 @@ export default function AdminProducts() {
                     </button>
                   </div>
                 ))}
-                
                 <label className={`w-24 h-24 rounded-lg border-2 border-dashed border-border flex flex-col items-center justify-center bg-background transition-colors ${isUploading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:border-primary hover:bg-primary/5'}`}>
                   {isUploading ? (
                     <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
@@ -432,9 +509,9 @@ export default function AdminProducts() {
               </div>
             </div>
 
-            {/* SEÇÃO DE TAGS (PESQUISA) */}
+            {/* Tags */}
             <div>
-              <Label>Tags de Busca (Ocultas, ajudam o cliente a achar o produto)</Label>
+              <Label>Tags de Busca</Label>
               <div className="flex gap-2 mt-1">
                 <Input value={tagInput} onChange={e => setTagInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addToList('tags', tagInput, setTagInput); } }} placeholder="Ex: anime, geek, presente" />
                 <Button type="button" variant="secondary" onClick={() => addToList('tags', tagInput, setTagInput)}>Add</Button>
@@ -446,14 +523,15 @@ export default function AdminProducts() {
               </div>
             </div>
 
+            {/* Switches */}
             <div className="flex gap-8 py-2">
               <div className="flex items-center gap-2">
                 <Switch checked={form.is_active} onCheckedChange={v => setForm(/** @type {any} */ (p) => ({ ...p, is_active: v }))} />
-                <Label className="cursor-pointer">Produto Ativo (Visível na loja)</Label>
+                <Label className="cursor-pointer">Produto Ativo</Label>
               </div>
               <div className="flex items-center gap-2">
                 <Switch checked={form.is_featured} onCheckedChange={v => setForm(/** @type {any} */ (p) => ({ ...p, is_featured: v }))} />
-                <Label className="cursor-pointer flex items-center gap-1">Destaque <span className="text-xs text-muted-foreground">(Aparece na Home)</span></Label>
+                <Label className="cursor-pointer">Destaque <span className="text-xs text-muted-foreground">(aparece na Home)</span></Label>
               </div>
             </div>
 
